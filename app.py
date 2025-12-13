@@ -5,155 +5,37 @@ import plotly.graph_objects as go
 import plotly.express as px
 from datetime import datetime, timedelta
 import yfinance as yf
-# Note: Model functions are defined in the cell below
-# from models import run_ols_model, run_arima_model, run_garch_model, calculate_metrics
-import warnings
-warnings.filterwarnings('ignore')
-
-# %pip install arch statsmodels scikit-learn -q
-
-import numpy as np
-import pandas as pd
 from statsmodels.tsa.arima.model import ARIMA
 from statsmodels.regression.linear_model import OLS
 from statsmodels.tools import add_constant
 from arch import arch_model
-from sklearn.metrics import mean_squared_error, mean_absolute_error
 import warnings
+
 warnings.filterwarnings('ignore')
 
-def run_ols_model(prices, forecast_days=30):
-    """
-    OLS model for trend forecasting
-    """
-    # Prepare data
-    X = np.arange(len(prices)).reshape(-1, 1)
-    y = prices.values
-    
-    # Add constant
-    X_const = add_constant(X)
-    
-    # Fit OLS model
-    model = OLS(y, X_const)
-    results = model.fit()
-    
-    # Forecast
-    X_future = np.arange(len(prices), len(prices) + forecast_days).reshape(-1, 1)
-    X_future_const = add_constant(X_future)
-    forecast = results.predict(X_future_const)
-    
-    # Calculate standard error
-    mse = results.mse_resid
-    std_error = np.sqrt(mse * (1 + 1/len(X) + (X_future - X.mean())**2 / ((X - X.mean())**2).sum()))
-    
-    return {
-        'forecast': forecast,
-        'r_squared': results.rsquared,
-        'trend_coef': results.params[1],
-        'std_error': std_error.flatten(),
-        'trend': 'Upward' if results.params[1] > 0 else 'Downward',
-        'model': results
-    }
+# -----------------------------------------------------------------------------
+# PAGE CONFIGURATION
+# -----------------------------------------------------------------------------
+st.set_page_config(
+    page_title="Forex Fee Forecaster",
+    page_icon="💱",
+    layout="wide"
+)
 
-def run_arima_model(prices, forecast_days=30, order=(1,1,1)):
-    """
-    ARIMA model for time series forecasting
-    """
-    try:
-        # Try to find optimal order automatically
-        best_aic = np.inf
-        best_order = (1,1,1)
-        best_model = None
-        
-        # Grid search for simple orders
-        for p in range(0, 3):
-            for d in range(0, 2):
-                for q in range(0, 3):
-                    try:
-                        model = ARIMA(prices, order=(p,d,q))
-                        results = model.fit()
-                        if results.aic < best_aic:
-                            best_aic = results.aic
-                            best_order = (p,d,q)
-                            best_model = results
-                    except:
-                        continue
-        
-        if best_model is None:
-            # Fallback to default
-            model = ARIMA(prices, order=order)
-            best_model = model.fit()
-            best_order = order
-            best_aic = best_model.aic
-        
-        # Forecast
-        forecast = best_model.forecast(steps=forecast_days)
-        
-        return {
-            'forecast': forecast.values,
-            'aic': best_aic,
-            'bic': best_model.bic,
-            'order': best_order,
-            'model': best_model
-        }
-    
-    except Exception as e:
-        # Return simple forecast if ARIMA fails
-        last_value = prices.iloc[-1]
-        forecast = np.array([last_value] * forecast_days)
-        
-        return {
-            'forecast': forecast,
-            'aic': np.nan,
-            'bic': np.nan,
-            'order': order,
-            'model': None
-        }
+# -----------------------------------------------------------------------------
+# HELPER FUNCTIONS & MODELS
+# -----------------------------------------------------------------------------
 
-def run_garch_model(returns, forecast_days=30):
-    """
-    GARCH model for volatility forecasting
-    """
-    try:
-        # Fit GARCH(1,1) model
-        model = arch_model(returns, vol='Garch', p=1, q=1)
-        results = model.fit(disp='off')
-        
-        # Forecast volatility
-        forecast = results.forecast(horizon=forecast_days)
-        
-        # Get conditional volatility
-        conditional_vol = forecast.variance.values[-1, :]
-        
-        # Generate return forecasts based on volatility
-        np.random.seed(42)  # For reproducibility
-        simulated_returns = np.random.normal(0, np.sqrt(conditional_vol))
-        
-        return {
-            'volatility': np.sqrt(conditional_vol),
-            'forecast': simulated_returns,
-            'persistence': results.params['alpha[1]'] + results.params['beta[1]'],
-            'model': results
-        }
-    
-    except Exception as e:
-        # Return simple volatility estimate
-        volatility = np.array([returns.std()] * forecast_days)
-        forecast = np.array([0] * forecast_days)
-        
-        return {
-            'volatility': volatility,
-            'forecast': forecast,
-            'persistence': np.nan,
-            'model': None
-        }
+def calculate_max_drawdown(prices):
+    """Calculate maximum drawdown."""
+    cumulative = prices / prices.iloc[0]
+    running_max = cumulative.expanding().max()
+    drawdown = (cumulative - running_max) / running_max
+    return drawdown.min() * 100
 
 def calculate_metrics(prices):
-    """
-    Calculate various performance metrics
-    """
+    """Calculate various performance metrics."""
     returns = prices.pct_change().dropna() * 100
-    
     metrics = {
         'Mean Return (%)': returns.mean(),
         'Volatility (%)': returns.std(),
@@ -166,201 +48,297 @@ def calculate_metrics(prices):
         'Min Price': prices.min(),
         'Max Price': prices.max()
     }
-    
     return metrics
 
-def calculate_max_drawdown(prices):
-    """
-    Calculate maximum drawdown
-    """
-    cumulative = prices / prices.iloc[0]
-    running_max = cumulative.expanding().max()
-    drawdown = (cumulative - running_max) / running_max
-    return drawdown.min() * 100
-
-"""
-Standalone script for reproducing the models and results.
-Run this script independently to verify the forecasting models.
-"""
-import pandas as pd
-import numpy as np
-from datetime import datetime, timedelta
-import yfinance as yf
-import warnings
-warnings.filterwarnings('ignore')
-
-# Import model functions
-try:
-    from models import run_ols_model, run_arima_model, run_garch_model, calculate_metrics
-except ImportError:
-    # Define inline if models.py not in same directory
-    print("Note: models.py not found, using inline functions")
-    
-    # Simplified inline versions for standalone use
-    def run_ols_model(prices, forecast_days=30):
+def run_ols_model(prices, forecast_days=30):
+    """OLS model for trend forecasting."""
+    try:
         X = np.arange(len(prices)).reshape(-1, 1)
         y = prices.values
-        X = np.column_stack([np.ones(len(X)), X])
-        beta = np.linalg.lstsq(X, y, rcond=None)[0]
-        forecast = beta[0] + beta[1] * np.arange(len(prices), len(prices) + forecast_days)
-        return {'forecast': forecast, 'r_squared': 0.85, 'trend': 'Testing'}
-    
-    def run_arima_model(prices, forecast_days=30):
-        forecast = np.array([prices.iloc[-1]] * forecast_days)
-        return {'forecast': forecast, 'aic': 1500, 'bic': 1510, 'order': (1,1,1)}
-    
-    def run_garch_model(returns, forecast_days=30):
+        X_const = add_constant(X)
+        model = OLS(y, X_const)
+        results = model.fit()
+        
+        X_future = np.arange(len(prices), len(prices) + forecast_days).reshape(-1, 1)
+        X_future_const = add_constant(X_future)
+        forecast = results.predict(X_future_const)
+        
+        # Calculate standard error for confidence intervals
+        mse = results.mse_resid
+        std_error = np.sqrt(mse * (1 + 1/len(X) + (X_future - X.mean())**2 / ((X - X.mean())**2).sum()))
+        
+        return {
+            'forecast': forecast,
+            'r_squared': results.rsquared,
+            'trend_coef': results.params[1],
+            'std_error': std_error.flatten(),
+            'trend': 'Upward' if results.params[1] > 0 else 'Downward',
+            'model': results
+        }
+    except Exception as e:
+        st.error(f"OLS Model Error: {e}")
+        return None
+
+def run_arima_model(prices, forecast_days=30, order=(1,1,1)):
+    """ARIMA model for time series forecasting."""
+    try:
+        # Simple grid search (simplified for speed in Streamlit)
+        best_aic = np.inf
+        best_order = order
+        best_model = None
+        
+        # Reduced grid for performance
+        for p in range(0, 2):
+            for d in range(0, 2):
+                for q in range(0, 2):
+                    try:
+                        model = ARIMA(prices, order=(p,d,q))
+                        results = model.fit()
+                        if results.aic < best_aic:
+                            best_aic = results.aic
+                            best_order = (p,d,q)
+                            best_model = results
+                    except:
+                        continue
+        
+        if best_model is None:
+            model = ARIMA(prices, order=order)
+            best_model = model.fit()
+            best_order = order
+        
+        forecast = best_model.forecast(steps=forecast_days)
+        
+        return {
+            'forecast': forecast.values,
+            'aic': best_model.aic,
+            'bic': best_model.bic,
+            'order': best_order,
+            'model': best_model
+        }
+    except Exception as e:
+        # Fallback
+        last_value = prices.iloc[-1]
+        forecast = np.array([last_value] * forecast_days)
+        return {
+            'forecast': forecast,
+            'aic': np.nan,
+            'bic': np.nan,
+            'order': order,
+            'model': None
+        }
+
+def run_garch_model(returns, forecast_days=30):
+    """GARCH model for volatility forecasting."""
+    try:
+        # Rescale returns if volatility is very small to avoid convergence issues
+        scale_factor = 100 if returns.std() < 0.01 else 1
+        scaled_returns = returns * scale_factor
+        
+        model = arch_model(scaled_returns, vol='Garch', p=1, q=1)
+        results = model.fit(disp='off')
+        
+        forecast = results.forecast(horizon=forecast_days)
+        conditional_vol = forecast.variance.values[-1, :]
+        
+        # Rescale volatility back
+        final_vol = np.sqrt(conditional_vol) / scale_factor
+        
+        return {
+            'volatility': final_vol,
+            'persistence': results.params.get('alpha[1]', 0) + results.params.get('beta[1]', 0)
+        }
+    except Exception as e:
+        st.warning(f"GARCH model failed to converge: {e}")
         volatility = np.array([returns.std()] * forecast_days)
-        forecast = np.array([0] * forecast_days)
-        return {'volatility': volatility, 'forecast': forecast, 'persistence': 0.9}
+        return {
+            'volatility': volatility,
+            'persistence': np.nan
+        }
+
+# -----------------------------------------------------------------------------
+# MAIN APP
+# -----------------------------------------------------------------------------
 
 def main():
-    """
-    Main function to run all models and display results
-    """
-    print("=" * 60)
-    print("FOREX FEE FORECASTER - STANDALONE SCRIPT")
-    print("=" * 60)
-    
-    # Download sample data
-    print("\n📥 Downloading EUR/USD data from Yahoo Finance...")
-    try:
-        end_date = datetime.now()
-        start_date = end_date - timedelta(days=365)
+    # --- Sidebar Inputs ---
+    with st.sidebar:
+        st.header("⚙️ Configuration")
         
-        data = yf.download('EURUSD=X', start=start_date, end=end_date, progress=False)
+        ticker = st.text_input("Ticker Symbol", value="EURUSD=X", help="Yahoo Finance Ticker (e.g., GBPUSD=X, JPY=X)")
         
-        if data.empty:
-            print("⚠️  Using simulated data instead...")
-            # Generate simulated data
-            dates = pd.date_range(end=end_date, periods=365, freq='D')
-            np.random.seed(42)
-            prices = 0.85 + np.random.randn(365).cumsum() * 0.001
-            prices = pd.Series(prices, index=dates)
-        else:
-            prices = data['Close'].dropna()
+        period = st.selectbox("Historical Data Period", ["3mo", "6mo", "1y", "2y", "5y"], index=2)
         
-        returns = prices.pct_change().dropna() * 100
+        forecast_days = st.slider("Forecast Horizon (Days)", min_value=7, max_value=90, value=30)
         
-        print(f"✅ Data loaded: {len(prices)} days from {prices.index[0].date()} to {prices.index[-1].date()}")
-        print(f"   Current rate: {prices.iloc[-1]:.4f}")
+        st.divider()
+        st.subheader("🎓 Payment Simulator")
+        tuition_amount = st.number_input("Payment Amount", value=20000, step=500, help="Amount in target currency or base currency depending on perspective")
         
-    except Exception as e:
-        print(f"❌ Error downloading data: {e}")
-        print("Using simulated data instead...")
-        # Generate simulated data
-        dates = pd.date_range(end=datetime.now(), periods=365, freq='D')
-        np.random.seed(42)
-        prices = 0.85 + np.random.randn(365).cumsum() * 0.001
-        prices = pd.Series(prices, index=dates)
-        returns = prices.pct_change().dropna() * 100
-    
-    # Run all models
-    forecast_days = 30
-    
-    print("\n" + "=" * 60)
-    print("RUNNING FORECASTING MODELS")
-    print("=" * 60)
-    
-    # OLS Model
-    print("\n📈 OLS MODEL")
-    ols_results = run_ols_model(prices, forecast_days)
-    print(f"   R-squared: {ols_results.get('r_squared', 0):.4f}")
-    print(f"   Trend: {ols_results.get('trend', 'N/A')}")
-    print(f"   30-day forecast: {ols_results['forecast'][-1]:.4f}")
-    
-    # ARIMA Model
-    print("\n📊 ARIMA MODEL")
-    arima_results = run_arima_model(prices, forecast_days)
-    print(f"   AIC: {arima_results.get('aic', 0):.2f}")
-    print(f"   Order: {arima_results.get('order', (1,1,1))}")
-    print(f"   30-day forecast: {arima_results['forecast'][-1]:.4f}")
-    
-    # GARCH Model
-    print("\n⚡ GARCH MODEL")
-    garch_results = run_garch_model(returns, forecast_days)
-    print(f"   Volatility forecast: {garch_results['volatility'][-1]:.4f}%")
-    print(f"   Persistence: {garch_results.get('persistence', 0):.4f}")
-    
-    # Calculate metrics
-    print("\n" + "=" * 60)
-    print("PERFORMANCE METRICS")
-    print("=" * 60)
-    
-    try:
-        metrics = calculate_metrics(prices)
-        for key, value in metrics.items():
-            if 'Ratio' in key or 'Skewness' in key or 'Kurtosis' in key:
-                print(f"   {key}: {value:.4f}")
-            elif '%' in key:
-                print(f"   {key}: {value:.2f}%")
+        if st.button("Run Forecast Analysis", type="primary"):
+            st.session_state['run_analysis'] = True
+
+    # --- Title Section ---
+    st.title("💱 Forex Fee Forecaster")
+    st.markdown(f"Forecasting trends and volatility for **{ticker}** to optimize international payments.")
+
+    # --- Data Loading ---
+    if st.session_state.get('run_analysis', False):
+        with st.spinner('Downloading market data...'):
+            try:
+                # Calculate start date based on period
+                end_date = datetime.now()
+                if period == "3mo": start_date = end_date - timedelta(days=90)
+                elif period == "6mo": start_date = end_date - timedelta(days=180)
+                elif period == "1y": start_date = end_date - timedelta(days=365)
+                elif period == "2y": start_date = end_date - timedelta(days=730)
+                else: start_date = end_date - timedelta(days=365*5)
+                
+                df = yf.download(ticker, start=start_date, end=end_date, progress=False)
+                
+                if df.empty:
+                    st.error(f"No data found for ticker {ticker}. Please check the symbol.")
+                    st.stop()
+                    
+                prices = df['Close'].dropna()
+                # Handle MultiIndex if present (yfinance update)
+                if isinstance(prices, pd.DataFrame):
+                    prices = prices.iloc[:, 0]
+                
+                returns = prices.pct_change().dropna() * 100
+                
+            except Exception as e:
+                st.error(f"Error loading data: {e}")
+                st.stop()
+
+        # --- Dashboard Layout ---
+        tab1, tab2, tab3, tab4 = st.tabs(["📈 Market Overview", "🤖 Forecast Models", "⚡ Volatility (GARCH)", "💡 Recommendation"])
+
+        # TAB 1: MARKET OVERVIEW
+        with tab1:
+            col1, col2, col3, col4 = st.columns(4)
+            current_price = prices.iloc[-1]
+            prev_price = prices.iloc[-2]
+            delta = current_price - prev_price
+            
+            col1.metric("Current Rate", f"{current_price:.4f}", f"{delta:.4f}")
+            col2.metric("Period High", f"{prices.max():.4f}")
+            col3.metric("Period Low", f"{prices.min():.4f}")
+            col4.metric("Volatility (Std)", f"{returns.std():.2f}%")
+            
+            # Interactive Price Chart
+            fig_price = px.line(x=prices.index, y=prices.values, title=f"{ticker} Historical Prices")
+            fig_price.update_layout(xaxis_title="Date", yaxis_title="Price")
+            st.plotly_chart(fig_price, use_container_width=True)
+            
+            # Metrics DataFrame
+            st.subheader("Descriptive Statistics")
+            metrics = calculate_metrics(prices)
+            st.json(metrics)
+
+        # TAB 2: FORECAST MODELS (OLS & ARIMA)
+        with tab2:
+            st.subheader("Trend Analysis")
+            
+            # Run Models
+            with st.spinner("Running OLS and ARIMA models..."):
+                ols_res = run_ols_model(prices, forecast_days)
+                arima_res = run_arima_model(prices, forecast_days)
+            
+            col_a, col_b = st.columns(2)
+            
+            # OLS Results
+            with col_a:
+                st.markdown("### OLS Linear Trend")
+                if ols_res:
+                    st.info(f"Trend: **{ols_res['trend']}** (R²: {ols_res['r_squared']:.4f})")
+                    
+                    # Plot OLS
+                    future_dates = [prices.index[-1] + timedelta(days=x) for x in range(1, forecast_days + 1)]
+                    fig_ols = go.Figure()
+                    fig_ols.add_trace(go.Scatter(x=prices.index, y=prices.values, name='Historical'))
+                    fig_ols.add_trace(go.Scatter(x=future_dates, y=ols_res['forecast'], name='Forecast', line=dict(color='orange', dash='dash')))
+                    fig_ols.update_layout(title="OLS Linear Forecast")
+                    st.plotly_chart(fig_ols, use_container_width=True)
+
+            # ARIMA Results
+            with col_b:
+                st.markdown("### ARIMA Time Series")
+                if arima_res:
+                    st.info(f"Best Order: {arima_res['order']} (AIC: {arima_res['aic']:.2f})")
+                    
+                    # Plot ARIMA
+                    future_dates = [prices.index[-1] + timedelta(days=x) for x in range(1, forecast_days + 1)]
+                    fig_arima = go.Figure()
+                    fig_arima.add_trace(go.Scatter(x=prices.index, y=prices.values, name='Historical'))
+                    fig_arima.add_trace(go.Scatter(x=future_dates, y=arima_res['forecast'], name='Forecast', line=dict(color='green', dash='dot')))
+                    fig_arima.update_layout(title="ARIMA Forecast")
+                    st.plotly_chart(fig_arima, use_container_width=True)
+
+        # TAB 3: VOLATILITY (GARCH)
+        with tab3:
+            st.subheader("Volatility Forecasting (GARCH)")
+            
+            with st.spinner("Running GARCH model..."):
+                garch_res = run_garch_model(returns, forecast_days)
+            
+            if garch_res:
+                col_v1, col_v2 = st.columns([1, 2])
+                with col_v1:
+                    st.metric("Forecasted Volatility (30d avg)", f"{garch_res['volatility'].mean():.4f}%")
+                    st.metric("Persistence", f"{garch_res.get('persistence', 0):.4f}")
+                
+                with col_v2:
+                    future_dates = [prices.index[-1] + timedelta(days=x) for x in range(1, forecast_days + 1)]
+                    fig_vol = px.line(x=future_dates, y=garch_res['volatility'], title="Forecasted Volatility Horizon")
+                    fig_vol.update_yaxes(title="Volatility (%)")
+                    st.plotly_chart(fig_vol, use_container_width=True)
+                
+                st.markdown("""
+                **Interpretation:**
+                * **High Volatility:** Expect large price swings. Consider hedging or locking in rates.
+                * **Low Volatility:** Market is stable. Standard spot payments may be safer.
+                """)
+
+        # TAB 4: RECOMMENDATION
+        with tab4:
+            st.header("Decision Support")
+            
+            avg_forecast_price = np.mean([ols_res['forecast'][-1], arima_res['forecast'][-1]])
+            current_rate = prices.iloc[-1]
+            
+            # Simple tuition logic: Assuming Tuition is in Base Currency (e.g., USD) and we hold Quote Currency
+            # OR Tuition is in Quote Currency and we hold Base Currency.
+            # For simplicity: "Cost to buy 'tuition_amount' of Quote Currency using Base Currency"
+            
+            # Scenario: You need to pay 'tuition_amount' (e.g., 20k EUR). Ticker EURUSD=X.
+            # Rate is USD per EUR.
+            # Cost in USD = Amount * Rate
+            
+            current_cost = tuition_amount * current_rate
+            forecast_cost = tuition_amount * avg_forecast_price
+            diff = forecast_cost - current_cost
+            pct_change = (diff / current_cost) * 100
+            
+            col_d1, col_d2, col_d3 = st.columns(3)
+            col_d1.metric("Current Cost", f"{current_cost:,.2f}")
+            col_d2.metric("Forecasted Cost (30 Days)", f"{forecast_cost:,.2f}")
+            col_d3.metric("Projected Difference", f"{diff:,.2f}", f"{pct_change:.2f}%")
+            
+            st.divider()
+            
+            # Recommendation Logic
+            if pct_change > 0.5:
+                st.success("🟢 **Recommendation: PAY NOW**")
+                st.write(f"Models predict the rate will increase by {pct_change:.2f}%. Paying now could save you approximately {diff:,.2f}.")
+            elif pct_change < -0.5:
+                st.warning("🔵 **Recommendation: WAIT**")
+                st.write(f"Models predict the rate will decrease by {abs(pct_change):.2f}%. Waiting could save you approximately {abs(diff):,.2f}.")
             else:
-                print(f"   {key}: {value:.4f}")
-    except:
-        # Basic metrics if calculate_metrics fails
-        print(f"   Mean Return: {returns.mean():.2f}%")
-        print(f"   Volatility: {returns.std():.2f}%")
-        print(f"   Mean Price: {prices.mean():.4f}")
-    
-    # Summary table
-    print("\n" + "=" * 60)
-    print("FORECAST SUMMARY")
-    print("=" * 60)
-    
-    summary_data = {
-        'Model': ['OLS', 'ARIMA', 'GARCH'],
-        '30-Day Forecast': [
-            f"{ols_results['forecast'][-1]:.4f}",
-            f"{arima_results['forecast'][-1]:.4f}",
-            f"Vol: {garch_results['volatility'][-1]:.4f}%"
-        ],
-        'Key Metric': [
-            f"R²: {ols_results.get('r_squared', 0):.4f}",
-            f"AIC: {arima_results.get('aic', 0):.2f}",
-            f"Persist: {garch_results.get('persistence', 0):.4f}"
-        ]
-    }
-    
-    df_summary = pd.DataFrame(summary_data)
-    print(df_summary.to_string(index=False))
-    
-    # Example tuition calculation
-    print("\n" + "=" * 60)
-    print("EXAMPLE TUITION CALCULATION")
-    print("=" * 60)
-    
-    tuition_amount = 20000  # USD
-    current_rate = prices.iloc[-1]
-    avg_forecast = np.mean([ols_results['forecast'][-1], arima_results['forecast'][-1]])
-    
-    current_cost = tuition_amount / current_rate if current_rate > 0 else 0
-    forecast_cost = tuition_amount / avg_forecast if avg_forecast > 0 else 0
-    difference = forecast_cost - current_cost
-    percent_change = (difference / current_cost * 100) if current_cost > 0 else 0
-    
-    print(f"Tuition Amount: ${tuition_amount:,}")
-    print(f"Current Rate: {current_rate:.4f}")
-    print(f"Average 30-Day Forecast: {avg_forecast:.4f}")
-    print(f"Current EUR Cost: €{current_cost:,.2f}")
-    print(f"Forecasted EUR Cost: €{forecast_cost:,.2f}")
-    print(f"Difference: €{difference:,.2f} ({percent_change:+.2f}%)")
-    
-    # Recommendation
-    print("\n" + "=" * 60)
-    print("RECOMMENDATION")
-    print("=" * 60)
-    
-    if percent_change > 1:
-        print("🟢 SUGGESTION: Consider paying now (forecast suggests higher cost later)")
-    elif percent_change < -1:
-        print("🔵 SUGGESTION: Consider waiting (forecast suggests lower cost later)")
+                st.info("🟡 **Recommendation: HOLD / NEUTRAL**")
+                st.write("Forecast indicates relatively stable prices. Monitor volatility or use dollar-cost averaging.")
+
     else:
-        print("🟡 SUGGESTION: Neutral forecast - monitor market for 1 week")
-    
-    print("\n" + "=" * 60)
-    print("SCRIPT COMPLETED SUCCESSFULLY ✓")
-    print("Results match the interactive application.")
-    print("=" * 60)
+        st.info("👈 Select parameters in the sidebar and click **Run Forecast Analysis** to begin.")
 
 if __name__ == "__main__":
     main()
