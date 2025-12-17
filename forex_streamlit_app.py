@@ -306,27 +306,19 @@ st.markdown("""
     .divider {
         margin: 12px 0 !important;
     }
+    
+    .bottom-nav {
+        display: flex;
+        gap: 8px;
+        padding: 12px 0;
+        margin-top: 20px;
+    }
+    
+    .bottom-nav button {
+        flex: 1;
+    }
 </style>
 """, unsafe_allow_html=True)
-
-# ==========================================
-# MOBILE-OPTIMIZED NAVIGATION BAR
-# ==========================================
-nav_col1, nav_col2, nav_col3 = st.columns([1, 1, 1])
-with nav_col1:
-    if st.button("🔄 Convert", key="nav_convert", use_container_width=True): 
-        st.session_state.nav = 'Convert'
-        st.rerun()
-with nav_col2:
-    if st.button("🏆 Leaderboard", key="nav_leader", use_container_width=True): 
-        st.session_state.nav = 'Leaderboard'
-        st.rerun()
-with nav_col3:
-    if st.button("👛 Savings", key="nav_savings", use_container_width=True): 
-        st.session_state.nav = 'Savings'
-        st.rerun()
-
-st.divider()
 
 # ==========================================
 # VIEW: LEADERBOARD
@@ -471,7 +463,7 @@ elif st.session_state.nav == 'Convert':
             
         st.button("✅ CONFIRM", use_container_width=True)
 
-    # --- ANALYTICS SECTION WITH TABS ---
+    # --- ANALYTICS SECTION WITH TABS AND GRAPH ---
     else:
         st.divider()
         st.markdown("### 📊 MARKET ANALYSIS")
@@ -512,29 +504,29 @@ elif st.session_state.nav == 'Convert':
         </div>
         """, unsafe_allow_html=True)
         
-        # Tab Navigation for Analytics
+        # GRAPH - ALWAYS VISIBLE
+        st.markdown("---")
+        st.markdown("#### 📈 Market Graph")
+        fig = create_interactive_plot(df, forecast_series=arima_forecast) 
+        st.plotly_chart(fig, use_container_width=True)
+        
+        # Tab Navigation for Analytics Content
         st.markdown("---")
         tab_cols = st.columns(3)
         with tab_cols[0]:
-            if st.button("📈 Graph", use_container_width=True, key="tab_graph"):
-                st.session_state.analytics_tab = 'graph'
-        with tab_cols[1]:
             if st.button("📊 Overview", use_container_width=True, key="tab_overview"):
                 st.session_state.analytics_tab = 'overview'
-        with tab_cols[2]:
+        with tab_cols[1]:
             if st.button("🎯 Forecast", use_container_width=True, key="tab_forecast"):
                 st.session_state.analytics_tab = 'forecast'
+        with tab_cols[2]:
+            if st.button("💡 Details", use_container_width=True, key="tab_details"):
+                st.session_state.analytics_tab = 'details'
         
         st.markdown("---")
         
-        # TAB 1: GRAPH
-        if st.session_state.analytics_tab == 'graph':
-            st.markdown("#### Market Graph")
-            fig = create_interactive_plot(df, forecast_series=arima_forecast) 
-            st.plotly_chart(fig, use_container_width=True)
-        
-        # TAB 2: OVERVIEW
-        elif st.session_state.analytics_tab == 'overview':
+        # TAB 1: OVERVIEW
+        if st.session_state.analytics_tab == 'overview':
             col_metric1, col_metric2 = st.columns(2)
             
             with col_metric1:
@@ -568,7 +560,7 @@ elif st.session_state.nav == 'Convert':
             with metrics_col2:
                 st.metric("Trend Strength", f"{confidence}%", delta=None)
         
-        # TAB 3: FORECAST
+        # TAB 2: FORECAST
         elif st.session_state.analytics_tab == 'forecast':
             st.markdown("#### 30-Day Forecast")
             
@@ -578,8 +570,9 @@ elif st.session_state.nav == 'Convert':
             })
             
             st.dataframe(forecast_df, use_container_width=True, hide_index=True)
-            
-            # AI Recommendation
+        
+        # TAB 3: DETAILS
+        elif st.session_state.analytics_tab == 'details':
             advice = generate_trading_advice(ols_dir, risk_level, current_rate, final_pred)
             st.markdown(f"""
             <div class="advice-box">
@@ -590,3 +583,33 @@ elif st.session_state.nav == 'Convert':
                 </div>
             </div>
             """, unsafe_allow_html=True)
+            
+            st.markdown("---")
+            st.markdown("#### Analysis Details")
+            st.markdown(f"""
+            - **Trend Direction**: {ols_dir}
+            - **Risk Level**: {risk_level}
+            - **Forecast Accuracy**: {confidence}%
+            - **Current to Forecast Change**: ₹{abs(final_pred - current_rate):.2f} ({((final_pred - current_rate)/current_rate*100):.2f}%)
+            """)
+
+# ==========================================
+# BOTTOM NAVIGATION - FIXED AT BOTTOM
+# ==========================================
+st.markdown("---")
+st.markdown("<div style='margin-bottom: 40px;'></div>", unsafe_allow_html=True)
+
+nav_col1, nav_col2, nav_col3 = st.columns([1, 1, 1])
+with nav_col1:
+    if st.button("🔄 Convert", key="nav_convert", use_container_width=True): 
+        st.session_state.nav = 'Convert'
+        st.session_state.trans_step = 'input'
+        st.rerun()
+with nav_col2:
+    if st.button("🏆 Leaderboard", key="nav_leader", use_container_width=True): 
+        st.session_state.nav = 'Leaderboard'
+        st.rerun()
+with nav_col3:
+    if st.button("👛 Savings", key="nav_savings", use_container_width=True): 
+        st.session_state.nav = 'Savings'
+        st.rerun()
