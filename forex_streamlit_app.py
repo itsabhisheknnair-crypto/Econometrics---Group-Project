@@ -16,7 +16,7 @@ warnings.filterwarnings("ignore")
 st.set_page_config(
     page_title="Forex Savings & Predictor",
     page_icon="💱",
-    layout="mobile", # Changed to mobile layout to match the app-like screenshots
+    layout="wide",
     initial_sidebar_state="collapsed"
 )
 
@@ -37,9 +37,7 @@ if 'transaction_amt' not in st.session_state:
 # ==========================================
 def fetch_data(period="1y"):
     """Fetch live EUR/INR data"""
-    # Using caching to speed up reruns and prevent constant reloading
-    @st.cache_data(ttl=3600)
-    def load_ticker_data():
+    with st.spinner("📥 Loading latest currency data..."):
         ticker = "EURINR=X"
         data = yf.download(ticker, period=period, progress=False)
         if isinstance(data.columns, pd.MultiIndex):
@@ -49,8 +47,6 @@ def fetch_data(period="1y"):
         df['Rate'] = df['Close']
         df = df.resample('B').last().ffill()
         return df
-    
-    return load_ticker_data()
 
 def run_ols_model(series, forecast_steps):
     df_ols = pd.DataFrame(series)
@@ -73,6 +69,7 @@ def run_arima_model(series, forecast_steps):
     forecast_res = model_fit.get_forecast(steps=forecast_steps)
     forecast_mean = forecast_res.predicted_mean
     
+    # Ensure index is datetime for plotting if it isn't already
     if not isinstance(forecast_mean.index, pd.DatetimeIndex):
         last_date = series.index[-1]
         forecast_dates = pd.date_range(start=last_date, periods=forecast_steps+1, freq='B')[1:]
@@ -85,37 +82,53 @@ def run_garch_model(series, forecast_steps):
     model = arch_model(returns, vol='Garch', p=1, q=1)
     model_fit = model.fit(disp='off')
     forecast_res = model_fit.forecast(horizon=forecast_steps)
-    # Return the fit result and the variance array directly
     variance_forecast = forecast_res.variance.iloc[-1].values
     return model_fit, variance_forecast
 
 def create_interactive_plot(df, forecast_series=None):
+    """
+    Creates an interactive plot with historical data and optionally the ARIMA forecast.
+    """
     fig = go.Figure()
-    
-    # Historical Data
+
+    # 1. Historical Data Trace
     fig.add_trace(go.Scatter(
-        x=df.index, y=df['Rate'], mode='lines', name='Historical Rate',
-        line=dict(color='#0066cc', width=2), fill='tozeroy', fillcolor='rgba(0, 102, 204, 0.1)'
+        x=df.index, 
+        y=df['Rate'], 
+        mode='lines', 
+        name='Historical Rate',
+        line=dict(color='#0066cc', width=2), 
+        fill='tozeroy', 
+        fillcolor='rgba(0, 102, 204, 0.1)'
     ))
 
-    # ARIMA Forecast
+    # 2. ARIMA Forecast Trace (if provided)
     if forecast_series is not None:
+        # We add the last historical point to the forecast series to make the lines connect visually
         last_hist_date = df.index[-1]
         last_hist_val = df['Rate'].iloc[-1]
+        
+        # Create a connecting series
         conn_x = [last_hist_date] + list(forecast_series.index)
         conn_y = [last_hist_val] + list(forecast_series.values)
 
         fig.add_trace(go.Scatter(
-            x=conn_x, y=conn_y, mode='lines', name='ARIMA Prediction',
-            line=dict(color='#ff4b4b', width=2, dash='dash'),
+            x=conn_x,
+            y=conn_y,
+            mode='lines',
+            name='ARIMA Prediction',
+            line=dict(color='#ff4b4b', width=2, dash='dash'), # Red dashed line for prediction
             hovertemplate='%{y:.2f} (Predicted)<extra></extra>'
         ))
 
     fig.update_layout(
-        title="Interactive Price History & Prediction",
-        xaxis_title="Time", yaxis_title="Rate (₹ per EUR)",
-        template="plotly_white", hovermode="x unified",
-        height=400, margin=dict(l=20, r=20, t=50, b=20),
+        title="Interactive Price History & Prediction", 
+        xaxis_title="Time", 
+        yaxis_title="Rate (₹ per EUR)",
+        template="plotly_white", 
+        hovermode="x unified", 
+        height=450, 
+        margin=dict(l=20, r=20, t=50, b=20),
         legend=dict(yanchor="top", y=0.99, xanchor="left", x=0.01)
     )
     return fig
@@ -136,33 +149,30 @@ st.markdown("""
 <style>
     div.stButton > button {
         width: 100%;
-        border-radius: 25px;
+        border-radius: 12px;
         height: 50px;
         font-weight: bold;
-        border: none;
-        box-shadow: 0px 4px 6px rgba(0,0,0,0.1);
-    }
-    div[data-testid="stMetricValue"] {
-        font-size: 1.5rem;
     }
     .big-font { font-size: 20px !important; font-weight: bold; }
+    .metric-card {
+        background-color: #f0f2f6;
+        padding: 20px;
+        border-radius: 10px;
+        text-align: center;
+    }
 </style>
 """, unsafe_allow_html=True)
 
 # ==========================================
-# BOTTOM NAVIGATION BAR
+# NAVIGATION BAR
 # ==========================================
-# We place this at the top for Streamlit, but styled to look like a tab bar
-cols = st.columns(3)
-with cols[0]:
-    if st.button("🔄\nConvert", key="nav_convert", use_container_width=True): 
-        st.session_state.nav = 'Convert'
-with cols[1]:
-    if st.button("🏆\nLeaderboard", key="nav_leader", use_container_width=True): 
-        st.session_state.nav = 'Leaderboard'
-with cols[2]:
-    if st.button("👛\nMy Savings", key="nav_savings", use_container_width=True): 
-        st.session_state.nav = 'Savings'
+col_n1, col_n2, col_n3 = st.columns(3)
+with col_n1:
+    if st.button("🔄 Convert", key="nav_convert"): st.session_state.nav = 'Convert'
+with col_n2:
+    if st.button("🏆 Leaderboard", key="nav_leader"): st.session_state.nav = 'Leaderboard'
+with col_n3:
+    if st.button("👛 My Savings", key="nav_savings"): st.session_state.nav = 'Savings'
 
 st.divider()
 
@@ -170,16 +180,11 @@ st.divider()
 # VIEW: LEADERBOARD
 # ==========================================
 if st.session_state.nav == 'Leaderboard':
-    st.markdown("<h3 style='text-align: center; color: #0066cc;'>WEEKLY SAVINGS LEADERBOARD</h3>", unsafe_allow_html=True)
+    st.subheader("WEEKLY SAVINGS LEADERBOARD")
+    t1, t2, t3 = st.columns([1,2,1])
+    with t2:
+        st.caption("Friends 🔘 Global")
     
-    # Toggle (Visual)
-    c1, c2, c3 = st.columns([1, 2, 1])
-    with c2:
-        st.select_slider("View Mode", options=["Friends", "Global"], label_visibility="collapsed")
-    
-    st.markdown("<br>", unsafe_allow_html=True)
-
-    # Leaderboard Data matching screenshot
     leaders = [
         {"rank": "🥇", "name": "Priya S.", "eff": "+2.4%", "img": "👩🏽"},
         {"rank": "🥈", "name": "Rahul K.", "eff": "+1.8%", "img": "👨🏽"},
@@ -190,39 +195,25 @@ if st.session_state.nav == 'Leaderboard':
     ]
     
     for leader in leaders:
-        with st.container(border=True):
-            col_rank, col_name, col_score = st.columns([1, 3, 2])
-            with col_rank:
-                st.write(f"### {leader['rank']}")
-            with col_name:
-                st.write(f"**{leader['name']}**")
-                st.caption(leader['img'])
-            with col_score:
-                st.markdown(f"<h4 style='color: green; text-align: right;'>{leader['eff']}</h4>", unsafe_allow_html=True)
-                st.caption("Efficiency")
+        with st.container():
+            c1, c2, c3 = st.columns([1, 4, 2])
+            with c1: st.write(f"### {leader['rank']}")
+            with c2: st.write(f"**{leader['img']} {leader['name']}**")
+            with c3: st.success(f"{leader['eff']}\nEfficiency")
+            st.markdown("---")
 
 # ==========================================
 # VIEW: MY SAVINGS
 # ==========================================
 elif st.session_state.nav == 'Savings':
-    st.markdown("<h4 style='text-align: center;'>MY SAVINGS WALLET</h4>", unsafe_allow_html=True)
-    st.markdown("<div style='text-align: right;'>ℹ️</div>", unsafe_allow_html=True)
-    
-    # Stack of Coffees Visual
-    st.markdown("""
-        <div style="text-align: center; padding: 20px;">
-            <div style="font-size: 80px; line-height: 0.8;">☕☕☕</div>
-            <div style="font-size: 80px; line-height: 0.8;">☕☕☕</div>
-            <div style="font-size: 120px; font-weight: bold; color: white; text-shadow: 2px 2px 4px #000000;">
-                <span style="position: relative; bottom: 80px;">19</span>
-            </div>
-        </div>
-    """, unsafe_allow_html=True)
-    
-    st.markdown(f"<h3 style='text-align: center;'>You saved 19 COFFEES from your last transaction!</h3>", unsafe_allow_html=True)
-    st.caption("Compared to yesterday's rate.")
-    
-    st.button("Share my Savings", type="primary", use_container_width=True)
+    st.subheader("MY SAVINGS WALLET")
+    col_center = st.columns([1, 2, 1])[1]
+    with col_center:
+        st.markdown("<h1 style='text-align: center; font-size: 80px;'>☕</h1>", unsafe_allow_html=True)
+        st.markdown(f"<h1 style='text-align: center; font-size: 100px; line-height: 0.5;'>{st.session_state.coffee_count}</h1>", unsafe_allow_html=True)
+        st.markdown("<h3 style='text-align: center;'>COFFEES</h3>", unsafe_allow_html=True)
+        st.info(f"You saved **{st.session_state.coffee_count} COFFEES** from your last transaction!\n\nCompared to yesterday's rate.")
+        st.button("Share my Savings", type="primary")
 
 # ==========================================
 # VIEW: CONVERT (Main Logic)
@@ -235,110 +226,102 @@ elif st.session_state.nav == 'Convert':
     
     # --- UI Step 1: Input ---
     if st.session_state.trans_step == 'input':
-        
-        # Input Card
-        with st.container(border=True):
-            col_in1, col_in2 = st.columns([3, 1])
-            with col_in1:
-                amt = st.number_input("Amount", value=1000, label_visibility="collapsed")
-            with col_in2:
-                st.selectbox("Cur", ["INR"], key="curr_from", label_visibility="collapsed")
-        
-        st.markdown("<div style='text-align: center; color: #0066cc; font-size: 24px; margin: -10px 0;'>⬇️</div>", unsafe_allow_html=True)
-        
-        # Output Card
-        with st.container(border=True):
-            col_out1, col_out2 = st.columns([3, 1])
-            with col_out1:
-                st.text_input("Converted", value=f"{amt/current_rate:.2f}", disabled=True, label_visibility="collapsed")
-            with col_out2:
-                st.selectbox("Cur", ["EUR"], key="curr_to", label_visibility="collapsed")
+        st.subheader("Log Transaction")
+        c1, c2 = st.columns([3, 1])
+        with c1:
+            amt = st.number_input("Amount", value=1000, key="input_amt", label_visibility="collapsed")
+        with c2:
+            st.selectbox("Cur", ["INR"], label_visibility="collapsed", key="curr_from")
             
-        # Quick Picks
-        st.markdown("### ")
-        qp_cols = st.columns(4)
-        qp_cols[0].button("💲 USD")
-        qp_cols[1].button("🇦🇺 AUD")
-        qp_cols[2].button("🇨🇦 CAD")
-        qp_cols[3].button("🇬🇧 GBP")
+        st.markdown("<div style='text-align: center; color: #0066cc; font-size: 24px;'>⬇️</div>", unsafe_allow_html=True)
         
-        st.markdown("### ")
-        if st.button("LOG TRANSACTION", type="primary", use_container_width=True):
+        c3, c4 = st.columns([3, 1])
+        with c3:
+            st.text_input("Converted", value=f"{amt/current_rate:.2f}", disabled=True, label_visibility="collapsed")
+        with c4:
+            st.selectbox("Cur", ["EUR"], label_visibility="collapsed", key="curr_to")
+            
+        st.caption("Quick picks")
+        qp1, qp2, qp3, qp4 = st.columns(4)
+        qp1.button("💲 USD")
+        qp2.button("🇦🇺 AUD")
+        qp3.button("🇨🇦 CAD")
+        qp4.button("🇬🇧 GBP")
+        
+        if st.button("LOG TRANSACTION", type="primary"):
             st.session_state.transaction_amt = amt
             st.session_state.trans_step = 'category'
             st.rerun()
 
     # --- UI Step 2: Categorize ---
     elif st.session_state.trans_step == 'category':
-        st.markdown("<h3 style='text-align: center;'>CATEGORIZE YOUR TRANSACTION</h3>", unsafe_allow_html=True)
-        
-        # Grid of circular buttons
-        c1, c2, c3 = st.columns(3)
-        if c1.button("🏠\nRent"): 
+        st.subheader("CATEGORIZE YOUR TRANSACTION")
+        cat_cols = st.columns(3)
+        if cat_cols[0].button("🏠\nRent"): 
             st.session_state.trans_step = 'input'
             st.session_state.nav = 'Savings'
             st.rerun()
-        if c2.button("🎓\nTuition"): 
+        if cat_cols[1].button("🎓\nTuition"): 
             st.session_state.trans_step = 'input'
             st.session_state.nav = 'Savings'
             st.rerun()
-        if c3.button("✈️\nTravel"): 
-            st.session_state.trans_step = 'input'
-            st.session_state.nav = 'Savings'
-            st.rerun()
-            
-        c4, c5, c6 = st.columns(3)
-        if c4.button("🛒\nShopping"): 
-            st.session_state.trans_step = 'input'
-            st.session_state.nav = 'Savings'
-            st.rerun()
-        if c5.button("👪\nRemittance"): 
-            st.session_state.trans_step = 'input'
-            st.session_state.nav = 'Savings'
-            st.rerun()
-        if c6.button("🔄\nPuniaction"): 
+        if cat_cols[2].button("✈️\nTravel"): 
             st.session_state.trans_step = 'input'
             st.session_state.nav = 'Savings'
             st.rerun()
             
-        st.markdown("### ")
-        st.button("CONFIRM & SEE SAVINGS", type="primary", use_container_width=True)
+        cat_cols2 = st.columns(3)
+        if cat_cols2[0].button("🛒\nShopping"): 
+            st.session_state.trans_step = 'input'
+            st.session_state.nav = 'Savings'
+            st.rerun()
+        if cat_cols2[1].button("👪\nRemittance"): 
+            st.session_state.trans_step = 'input'
+            st.session_state.nav = 'Savings'
+            st.rerun()
+        if cat_cols2[2].button("🔄\nOther"): 
+            st.session_state.trans_step = 'input'
+            st.session_state.nav = 'Savings'
+            st.rerun()
+            
+        st.button("CONFIRM & SEE SAVINGS", type="primary")
 
-    # --- BELOW: Analytics (FIXED CODE HERE) ---
+    # --- BELOW: Analytics with UPDATED Graph ---
     st.divider()
     with st.expander("📊 Advanced Market Analysis & Prediction", expanded=True):
         
+        # 1. Controls
         forecast_days = st.slider("Forecast Days", 7, 90, 30)
         
-        # Run Models
+        # 2. Run Models FIRST (so we have data for the plot)
         with st.spinner("Running AI Prediction Models..."):
             ols_model, ols_forecast = run_ols_model(df['Rate'], forecast_days)
             arima_model, arima_forecast = run_arima_model(df['Rate'], forecast_days)
-            # run_garch_model now returns the fitted object AND the variance array
-            garch_fit_obj, garch_volatility = run_garch_model(df['Rate'], forecast_days)
+            garch_model, garch_volatility = run_garch_model(df['Rate'], forecast_days)
 
-        # Plot
+        # 3. Interactive Plot (Now includes arima_forecast)
+        st.subheader("Market Graph")
+        # Pass the ARIMA forecast to the plotting function here
         fig = create_interactive_plot(df, forecast_series=arima_forecast) 
         st.plotly_chart(fig, use_container_width=True)
         
-        # Stats
+        # 4. Text Analysis
         col_res1, col_res2 = st.columns(2)
         with col_res1:
-            st.subheader("Trend")
+            st.subheader("Trend Analysis")
             ols_dir = "UP ↗" if ols_model.params['Lag_1'] > 1 else "DOWN ↘"
-            st.info(f"Trend: **{ols_dir}**")
+            st.info(f"Market Trend: **{ols_dir}**")
             
         with col_res2:
-            st.subheader("Prediction")
+            st.subheader("Price Prediction")
             final_pred = arima_forecast.iloc[-1]
-            st.success(f"Target: **₹{final_pred:.2f}**")
+            st.success(f"Forecast ({forecast_days} days): **₹{final_pred:.2f}**")
             
-        # Advice - FIXED SECTION
-        # We assume returns are stable enough to use the last forecasted variance
-        # garch_volatility contains the variance. Sqrt gives std dev (volatility).
-        risk_val = np.sqrt(garch_volatility).mean()
-        
+        # 5. Advice
+        returns = df['Rate'].pct_change().dropna() * 100
+        forecast_var = garch_model.fit(disp='off').forecast(horizon=forecast_days)
+        risk_val = np.sqrt(forecast_var.variance.iloc[-1].values).mean()
         risk_level = "Low Risk" if risk_val < 0.5 else "High Risk"
-        advice = generate_trading_advice(ols_dir, risk_level, current_rate, final_pred)
         
+        advice = generate_trading_advice(ols_dir, risk_level, current_rate, final_pred)
         st.warning(f"AI Recommendation: **{advice}**")
