@@ -319,7 +319,7 @@ elif st.session_state.nav == 'Convert':
             
         # 5. Advice
         returns = df['Rate'].pct_change().dropna() * 100
-        forecast_var = garch_model.fit(disp='off').forecast(horizon=forecast_days)
+        forecast_var = garch_model.forecast(horizon=forecast_days)
         risk_val = np.sqrt(forecast_var.variance.iloc[-1].values).mean()
         risk_level = "Low Risk" if risk_val < 0.5 else "High Risk"
         
