@@ -166,15 +166,24 @@ st.markdown("""
 # ==========================================
 # NAVIGATION BAR
 # ==========================================
-col_n1, col_n2, col_n3 = st.columns(3)
-with col_n1:
-    if st.button("🔄 Convert", key="nav_convert"): st.session_state.nav = 'Convert'
-with col_n2:
-    if st.button("🏆 Leaderboard", key="nav_leader"): st.session_state.nav = 'Leaderboard'
-with col_n3:
-    if st.button("👛 My Savings", key="nav_savings"): st.session_state.nav = 'Savings'
+# Define your functions/pages
+def convert_page():
+    st.title("🔄 Convert")
 
-st.divider()
+def leaderboard_page():
+    st.title("🏆 Leaderboard")
+
+def savings_page():
+    st.title("👛 My Savings")
+
+# Create the navigation structure
+pg = st.navigation([
+    st.Page(convert_page, title="Convert", icon="🔄"),
+    st.Page(leaderboard_page, title="Leaderboard", icon="🏆"),
+    st.Page(savings_page, title="My Savings", icon="👛"),
+])
+
+pg.run()
 
 # ==========================================
 # VIEW: LEADERBOARD
@@ -325,3 +334,4 @@ elif st.session_state.nav == 'Convert':
         
         advice = generate_trading_advice(ols_dir, risk_level, current_rate, final_pred)
         st.warning(f"AI Recommendation: *{advice}*")
+
