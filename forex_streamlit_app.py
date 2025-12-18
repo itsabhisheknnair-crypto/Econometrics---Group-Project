@@ -166,31 +166,33 @@ st.markdown("""
 # ==========================================================
 # NAVIGATION BAR
 # ==========================================================
-# 1. CSS to pin the container and force buttons to fill width
+# 1. CSS for Sticky Bottom and Equal-Width Buttons
 st.markdown(
     """
     <style>
-        /* This targets the container we will create below */
-        [data-testid="stVerticalBlock"] > div:has(div.nav-container) {
+        /* This creates the sticky behavior at the bottom of the viewport */
+        div[data-testid="stVerticalBlock"] > div:has(div.sticky-nav) {
             position: fixed;
-            bottom: 0;
+            bottom: 0px;
             left: 0;
             width: 100%;
-            background-color: white;
-            z-index: 1000;
-            padding: 10px 20px;
-            border-top: 1px solid #e6e6e6;
+            background-color: #ffffff; /* Change to match your background */
+            padding: 15px 10%;
+            z-index: 99;
+            border-top: 1px solid #eee;
         }
 
-        /* Force buttons to be equal size and fill columns */
+        /* This forces the buttons to be equal size and fill the width */
         div.stButton > button {
             width: 100%;
-            border-radius: 10px;
-            height: 3.5em;
-            border: 1px solid #f0f2f6;
+            height: 50px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            white-space: nowrap;
         }
-        
-        /* Add padding to the bottom of the page content so it's not hidden */
+
+        /* Prevent content from being hidden behind the sticky bar */
         .main .block-container {
             padding-bottom: 100px;
         }
@@ -199,24 +201,29 @@ st.markdown(
     unsafe_allow_html=True
 )
 
-# 2. Page Routing Logic (Linking the buttons to content)
+# 2. Navigation State Logic
 if 'nav' not in st.session_state:
     st.session_state.nav = 'Convert'
 
-# Display content based on selection
+# 3. Page Content (Linked to buttons)
 if st.session_state.nav == 'Convert':
-    st.title("🔄 Currency Converter")
-    st.write("Scroll down to see the persistent footer..." + ("\n\nContent " * 100))
-elif st.session_state.nav == 'Leaderboard':
-    st.title("🏆 Leaderboard")
-    st.write("Top Performers")
-elif st.session_state.nav == 'Savings':
-    st.title("👛 My Savings")
-    st.write("Your total balance: $1,200")
+    st.header("🔄 Convert Currency")
+    st.info("Here you can convert your tokens.")
+    # Add long content to test scrolling
+    st.write("Scroll down..." * 100)
 
-# 3. The Footer Navigation (Placed at the bottom of the script)
-# We wrap this in a div with a class we can target
-st.markdown('<div class="nav-container"></div>', unsafe_allow_html=True)
+elif st.session_state.nav == 'Leaderboard':
+    st.header("🏆 Leaderboard")
+    st.write("Current top players:")
+    st.table({"User": ["Alice", "Bob"], "Score": [1000, 850]})
+
+elif st.session_state.nav == 'Savings':
+    st.header("👛 My Savings")
+    st.metric("Total Balance", "$4,250.00")
+
+# 4. Sticky Navigation Bar
+# The 'sticky-nav' div acts as a hook for our CSS
+st.markdown('<div class="sticky-nav"></div>', unsafe_allow_html=True)
 col_n1, col_n2, col_n3 = st.columns(3)
 
 with col_n1:
@@ -383,6 +390,7 @@ elif st.session_state.nav == 'Convert':
         
         advice = generate_trading_advice(ols_dir, risk_level, current_rate, final_pred)
         st.warning(f"AI Recommendation: *{advice}*")
+
 
 
 
