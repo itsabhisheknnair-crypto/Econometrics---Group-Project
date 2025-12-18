@@ -166,7 +166,7 @@ st.markdown("""
 # ==========================================================
 # NAVIGATION BAR
 # ==========================================================
-# 1. CSS for Sticky Bottom Navigation with Equal-Width Buttons
+# 1. CSS for Sticky Bottom Navigation with Equal-Width Buttons (Mobile Friendly)
 st.markdown(
     """
     <style>
@@ -188,34 +188,54 @@ st.markdown(
             box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
         }
         
-        /* Make columns container use flexbox for equal distribution */
+        /* Force horizontal layout on all screen sizes */
         div[data-testid="stVerticalBlock"]:has(div.sticky-nav) > div[data-testid="stHorizontalBlock"] {
             display: flex !important;
-            gap: 0 !important;
-            padding: 0 10px;
+            flex-direction: row !important;
+            gap: 5px !important;
+            padding: 0 10px !important;
         }
         
-        /* Equal width columns */
-        div[data-testid="stVerticalBlock"]:has(div.sticky-nav) > div[data-testid="stHorizontalBlock"] > div {
+        /* Equal width columns - force horizontal even on mobile */
+        div[data-testid="stVerticalBlock"]:has(div.sticky-nav) > div[data-testid="stHorizontalBlock"] > div[data-testid="column"] {
             flex: 1 !important;
             min-width: 0 !important;
-            padding: 0 5px !important;
+            max-width: 33.333% !important;
+            padding: 0 !important;
         }
         
         /* Style all buttons in the navigation */
         div[data-testid="stVerticalBlock"]:has(div.sticky-nav) button {
             width: 100% !important;
-            height: 55px !important;
+            min-height: 55px !important;
+            height: auto !important;
+            padding: 10px 5px !important;
             border-radius: 8px !important;
             border: none !important;
             background-color: #f0f0f0 !important;
             color: #333 !important;
-            font-size: 14px !important;
+            font-size: 13px !important;
             font-weight: 500 !important;
             display: flex !important;
             align-items: center !important;
             justify-content: center !important;
             transition: all 0.3s ease !important;
+            white-space: normal !important;
+            line-height: 1.2 !important;
+        }
+        
+        /* Mobile specific adjustments */
+        @media (max-width: 768px) {
+            div[data-testid="stVerticalBlock"]:has(div.sticky-nav) button {
+                font-size: 12px !important;
+                padding: 8px 3px !important;
+                min-height: 50px !important;
+            }
+            
+            div[data-testid="stVerticalBlock"]:has(div.sticky-nav) > div[data-testid="stHorizontalBlock"] {
+                gap: 3px !important;
+                padding: 0 5px !important;
+            }
         }
         
         /* Hover effect */
@@ -279,7 +299,6 @@ with st.container():
         if st.button("👛 My Savings", key="nav_savings", use_container_width=True):
             st.session_state.nav = 'Savings'
             st.rerun()
-
 # ==========================================
 # VIEW: LEADERBOARD
 # ==========================================
@@ -429,6 +448,7 @@ elif st.session_state.nav == 'Convert':
         
         advice = generate_trading_advice(ols_dir, risk_level, current_rate, final_pred)
         st.warning(f"AI Recommendation: *{advice}*")
+
 
 
 
