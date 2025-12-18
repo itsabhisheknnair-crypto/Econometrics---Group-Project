@@ -14,6 +14,7 @@ from models import (
     run_garch_model,
     run_ols_model,
 )
+from transactions import append_transaction, load_transactions
 
 warnings.filterwarnings("ignore")
 
@@ -179,6 +180,47 @@ with metric_col2:
 
 st.caption(f"Data points: **{len(df)}** (from {df.index[0].date()})")
 
+# ==========================================
+# TRANSACTION LOGGING (MOBILE-FRIENDLY)
+# ==========================================
+st.divider()
+st.subheader("💾 Log Transaction")
+st.caption("Track how many EUR you receive now vs. your last logged rate.")
+
+tx_col_amount, tx_col_date = st.columns(2)
+
+with tx_col_amount:
+    amount_inr = st.number_input(
+        "Amount in INR",
+        min_value=0.0,
+        step=1000.0,
+        format="%.2f",
+    )
+with tx_col_date:
+    tx_date = st.date_input("Transaction date")
+
+log_button = st.button("Log Transaction", type="primary", use_container_width=True)
+
+if log_button and amount_inr > 0:
+    tx_df, savings_eur = append_transaction(tx_date, amount_inr, current_rate)
+    eur_now = amount_inr / current_rate if current_rate > 0 else 0.0
+
+    if savings_eur is None:
+        st.success(
+            f"Logged first transaction: **₹{amount_inr:,.2f} ➝ {eur_now:,.4f} EUR** "
+            f"at rate **{current_rate:.4f} ₹/EUR**."
+        )
+    else:
+        sign = "more" if savings_eur > 0 else "less"
+        st.success(
+            f"Logged transaction: **₹{amount_inr:,.2f} ➝ {eur_now:,.4f} EUR**.\n\n"
+            f"Compared to your **previous logged rate**, you receive "
+            f"**{abs(savings_eur):.4f} EUR {sign}** for the same INR amount."
+        )
+
+    with st.expander("View transaction history"):
+        st.dataframe(tx_df.sort_values("date", ascending=False), use_container_width=True)
+
 st.divider()
 
 st.header("📊 Analysis Results")
@@ -232,7 +274,12 @@ st.warning(advice)
 st.divider()
 
 # Visualization
-st.subheader("📉 Forecast Visualization")
+st.subheader("📉 Interactive Rate Chart (Last 6 Months)")
+hist_df = df[["Rate"]].iloc[-180:].reset_index().rename(columns={"index": "Date"})
+hist_df.rename(columns={hist_df.columns[0]: "Date"}, inplace=True)
+st.line_chart(hist_df, x="Date", y="Rate", use_container_width=True)
+
+st.subheader("📊 Forecast & Trend (Detailed)")
 fig = create_visualization(df, forecast_days, ols_forecast, arima_forecast, current_rate)
 st.pyplot(fig)
 
