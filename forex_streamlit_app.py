@@ -1,4 +1,5 @@
 import warnings
+
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
@@ -92,11 +93,41 @@ def create_visualization(df, forecast_days, ols_forecast, arima_forecast, curren
 
 
 # ==========================================
-# SIDEBAR SETTINGS
+# SIDEBAR SETTINGS & ABOUT
 # ==========================================
 st.sidebar.header("⚙️ Settings")
 forecast_days = st.sidebar.slider("Forecast Period (Days)", 7, 90, 30)
-data_period = st.sidebar.selectbox("Historical Data Period", ["1y", "2y", "5y", "max"])
+data_period = st.sidebar.selectbox("Historical Data Period", ["2y", "4y", "5y", "10y", "max"])
+
+# ==========================================
+# SIDEBAR - ABOUT SECTION
+# ==========================================
+st.sidebar.divider()
+st.sidebar.header("ℹ️ About This App")
+st.sidebar.markdown("""
+This is a **EUR/INR Exchange Rate Prediction** tool powered by advanced econometric models:
+
+**📊 Features:**
+- **OLS Regression** - Identifies underlying trend direction
+- **ARIMA Model** - Forecasts future exchange rates
+- **GARCH Model** - Assesses market volatility & risk
+- **Smart Converter** - Real-time currency conversion
+- **Transaction Logger** - Track your exchange rates over time
+
+**💡 Use Cases:**
+- Monitor EUR/INR trends
+- Make informed trading decisions
+- Plan international transfers
+- Understand market volatility
+
+**📈 Data:**
+- Real-time forex data
+- EUR/INR rates (₹ per 1 EUR)
+- Updated daily
+
+**⚠️ Disclaimer:**
+For educational and analysis purposes. Not financial advice.
+""")
 
 # ==========================================
 # MAIN APP: LOAD DATA
@@ -316,6 +347,4 @@ st.markdown("""
 - Data: EUR/INR exchange rates (₹ per 1 EUR)
 - Developed for financial analysis and educational purposes
 """)
-
-
 
