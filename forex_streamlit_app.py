@@ -163,34 +163,18 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# ==========================================
+# ==========================================================
 # NAVIGATION BAR
-# ==========================================
-import streamlit as st
-
-# 1. Initialize session state
-if 'nav' not in st.session_state:
-    st.session_state.nav = 'Convert'
-
-# 2. Main Content Area
-st.write(f"Current Page: {st.session_state.nav}")
-# ... your page logic here ...
+# ==========================================================
+col_n1, col_n2, col_n3 = st.columns(3)
+with col_n1:
+    if st.button("🔄 Convert", key="nav_convert"): st.session_state.nav = 'Convert'
+with col_n2:
+    if st.button("🏆 Leaderboard", key="nav_leader"): st.session_state.nav = 'Leaderboard'
+with col_n3:
+    if st.button("👛 My Savings", key="nav_savings"): st.session_state.nav = 'Savings'
 
 st.divider()
-
-# 3. Mobile-friendly Bottom Navigation
-# Using segmented_control creates a sleek, full-width bar
-selection = st.segmented_control(
-    "Navigation", 
-    options=["Convert", "Leaderboard", "Savings"],
-    icons=["🔄", "🏆", "👛"],
-    selection_mode="single",
-    default=st.session_state.nav,
-    label_visibility="collapsed" # Hides the 'Navigation' text for a cleaner look
-)
-
-if selection:
-    st.session_state.nav = selection
 
 # ==========================================
 # VIEW: LEADERBOARD
@@ -341,6 +325,7 @@ elif st.session_state.nav == 'Convert':
         
         advice = generate_trading_advice(ols_dir, risk_level, current_rate, final_pred)
         st.warning(f"AI Recommendation: *{advice}*")
+
 
 
 
