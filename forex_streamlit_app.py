@@ -181,6 +181,38 @@ with metric_col2:
 st.caption(f"Data points: **{len(df)}** (from {df.index[0].date()})")
 
 # ==========================================
+# QUICK CURRENCY CONVERTER (BIDIRECTIONAL)
+# ==========================================
+st.divider()
+st.subheader("🔄 Quick Currency Converter")
+
+conv_col1, conv_col2 = st.columns(2)
+
+with conv_col1:
+    base_currency = st.radio("I have", ["INR", "EUR"], horizontal=True)
+with conv_col2:
+    amount_input = st.number_input(
+        "Amount",
+        min_value=0.0,
+        step=100.0,
+        format="%.2f",
+        key="conv_amount",
+    )
+
+if base_currency == "INR":
+    converted = amount_input / current_rate if current_rate > 0 else 0.0
+    from_label, to_label = "INR", "EUR"
+else:
+    converted = amount_input * current_rate
+    from_label, to_label = "EUR", "INR"
+
+if amount_input > 0:
+    st.caption(
+        f"**{amount_input:,.2f} {from_label} ≈ {converted:,.4f} {to_label}** "
+        f"at current rate **{current_rate:.4f} ₹/EUR**."
+    )
+
+# ==========================================
 # TRANSACTION LOGGING (MOBILE-FRIENDLY)
 # ==========================================
 st.divider()
