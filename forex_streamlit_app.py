@@ -188,20 +188,34 @@ st.markdown(
             box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
         }
         
-        /* Force horizontal layout on all screen sizes */
+        /* CRITICAL: Override Streamlit's mobile stacking behavior */
         div[data-testid="stVerticalBlock"]:has(div.sticky-nav) > div[data-testid="stHorizontalBlock"] {
             display: flex !important;
             flex-direction: row !important;
+            flex-wrap: nowrap !important;
             gap: 5px !important;
             padding: 0 10px !important;
+            width: 100% !important;
         }
         
-        /* Equal width columns - force horizontal even on mobile */
-        div[data-testid="stVerticalBlock"]:has(div.sticky-nav) > div[data-testid="stHorizontalBlock"] > div[data-testid="column"] {
-            flex: 1 !important;
+        /* Force columns to stay horizontal on ALL screen sizes */
+        div[data-testid="stVerticalBlock"]:has(div.sticky-nav) > div[data-testid="stHorizontalBlock"] > div {
+            flex: 1 1 33.333% !important;
             min-width: 0 !important;
             max-width: 33.333% !important;
+            width: 33.333% !important;
             padding: 0 !important;
+            margin: 0 !important;
+        }
+        
+        /* Override Streamlit's responsive column behavior */
+        @media (max-width: 640px) {
+            div[data-testid="stVerticalBlock"]:has(div.sticky-nav) > div[data-testid="stHorizontalBlock"] > div {
+                flex: 1 1 33.333% !important;
+                min-width: 0 !important;
+                max-width: 33.333% !important;
+                width: 33.333% !important;
+            }
         }
         
         /* Style all buttons in the navigation */
@@ -209,7 +223,7 @@ st.markdown(
             width: 100% !important;
             min-height: 55px !important;
             height: auto !important;
-            padding: 10px 5px !important;
+            padding: 10px 2px !important;
             border-radius: 8px !important;
             border: none !important;
             background-color: #f0f0f0 !important;
@@ -217,24 +231,34 @@ st.markdown(
             font-size: 13px !important;
             font-weight: 500 !important;
             display: flex !important;
+            flex-direction: column !important;
             align-items: center !important;
             justify-content: center !important;
             transition: all 0.3s ease !important;
-            white-space: normal !important;
-            line-height: 1.2 !important;
+            white-space: nowrap !important;
+            overflow: hidden !important;
+            text-overflow: ellipsis !important;
         }
         
-        /* Mobile specific adjustments */
+        /* Mobile specific button adjustments */
         @media (max-width: 768px) {
             div[data-testid="stVerticalBlock"]:has(div.sticky-nav) button {
-                font-size: 12px !important;
-                padding: 8px 3px !important;
+                font-size: 11px !important;
+                padding: 8px 2px !important;
                 min-height: 50px !important;
             }
             
             div[data-testid="stVerticalBlock"]:has(div.sticky-nav) > div[data-testid="stHorizontalBlock"] {
                 gap: 3px !important;
                 padding: 0 5px !important;
+            }
+        }
+        
+        /* Extra small screens */
+        @media (max-width: 480px) {
+            div[data-testid="stVerticalBlock"]:has(div.sticky-nav) button {
+                font-size: 10px !important;
+                padding: 6px 1px !important;
             }
         }
         
@@ -277,9 +301,7 @@ elif st.session_state.nav == 'Savings':
     st.write("Your savings details...")
 
 # 4. Sticky Navigation Bar
-# Create a container that will be positioned at the bottom
 with st.container():
-    # This marker helps CSS target this specific container
     st.markdown('<div class="sticky-nav"></div>', unsafe_allow_html=True)
     
     # Create three equal columns for navigation buttons
@@ -448,6 +470,7 @@ elif st.session_state.nav == 'Convert':
         
         advice = generate_trading_advice(ols_dir, risk_level, current_rate, final_pred)
         st.warning(f"AI Recommendation: *{advice}*")
+
 
 
 
