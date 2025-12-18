@@ -166,48 +166,31 @@ st.markdown("""
 # ==========================================
 # NAVIGATION BAR
 # ==========================================
-# 1. Initialize the session state so the app knows which page to show first
+import streamlit as st
+
+# 1. Initialize session state
 if 'nav' not in st.session_state:
     st.session_state.nav = 'Convert'
 
-# 2. Create a container for your main content 
-# (This ensures content stays above the nav bar)
-main_content = st.container()
+# 2. Main Content Area
+st.write(f"Current Page: {st.session_state.nav}")
+# ... your page logic here ...
 
-# 3. Logic: What to show on each "page"
-with main_content:
-    if st.session_state.nav == 'Convert':
-        st.title("🔄 Convert")
-        st.write("Your conversion tools go here.")
-        # Add your conversion logic...
-
-    elif st.session_state.nav == 'Leaderboard':
-        st.title("🏆 Leaderboard")
-        st.write("Top users are listed here.")
-        # Add your leaderboard logic...
-
-    elif st.session_state.nav == 'Savings':
-        st.title("👛 My Savings")
-        st.write("View your savings progress.")
-        # Add your savings logic...
-
-# 4. MOBILE NAVIGATION BAR (Placed at the bottom)
 st.divider()
 
-# Using segmented_control for a modern mobile feel
-# This automatically updates st.session_state.nav when clicked
+# 3. Mobile-friendly Bottom Navigation
+# Using segmented_control creates a sleek, full-width bar
 selection = st.segmented_control(
-    label="Navigation",
+    "Navigation", 
     options=["Convert", "Leaderboard", "Savings"],
     icons=["🔄", "🏆", "👛"],
+    selection_mode="single",
     default=st.session_state.nav,
-    label_visibility="collapsed"
+    label_visibility="collapsed" # Hides the 'Navigation' text for a cleaner look
 )
 
-# Update state and rerun if the user selects a new tab
-if selection and selection != st.session_state.nav:
+if selection:
     st.session_state.nav = selection
-    st.rerun()
 
 # ==========================================
 # VIEW: LEADERBOARD
@@ -358,5 +341,6 @@ elif st.session_state.nav == 'Convert':
         
         advice = generate_trading_advice(ols_dir, risk_level, current_rate, final_pred)
         st.warning(f"AI Recommendation: *{advice}*")
+
 
 
