@@ -300,4 +300,3 @@ st.markdown("""
 - Data: EUR/INR exchange rates (₹ per 1 EUR)
 - Developed for financial analysis and educational purposes
 """)
-
