@@ -166,108 +166,112 @@ st.markdown("""
 # ==========================================================
 # NAVIGATION BAR
 # ==========================================================
-# 1. Enhanced CSS for Mobile-First Bottom Navigation
+# 1. CSS for Sticky Bottom Navigation with Equal-Width Buttons (Mobile Friendly)
 st.markdown(
     """
     <style>
-        /* Add padding to main content so it's not hidden behind nav */
+        /* Hide default Streamlit padding */
         .main .block-container {
-            padding-bottom: 100px !important;
+            padding-bottom: 120px;
         }
         
-        /* Remove all default Streamlit styling that might interfere */
-        section[data-testid="stVerticalBlock"] > div:has(div.sticky-nav) {
-            position: fixed !important;
-            bottom: 0 !important;
-            left: 0 !important;
-            right: 0 !important;
-            width: 100% !important;
-            background-color: #ffffff !important;
-            padding: 8px 8px 8px 8px !important;
-            z-index: 9999 !important;
-            border-top: 1px solid #e0e0e0 !important;
-            box-shadow: 0 -2px 8px rgba(0,0,0,0.1) !important;
-            margin: 0 !important;
+        /* Target the container holding our navigation buttons */
+        div[data-testid="stVerticalBlock"]:has(div.sticky-nav) {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            background-color: #ffffff;
+            padding: 10px 0;
+            z-index: 999;
+            border-top: 2px solid #e0e0e0;
+            box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
         }
         
-        /* Force the horizontal block to be flexbox and stay horizontal */
-        section[data-testid="stVerticalBlock"] > div:has(div.sticky-nav) [data-testid="stHorizontalBlock"] {
+        /* CRITICAL: Override Streamlit's mobile stacking behavior */
+        div[data-testid="stVerticalBlock"]:has(div.sticky-nav) > div[data-testid="stHorizontalBlock"] {
             display: flex !important;
             flex-direction: row !important;
             flex-wrap: nowrap !important;
-            justify-content: space-between !important;
-            align-items: stretch !important;
-            gap: 6px !important;
+            gap: 5px !important;
+            padding: 0 10px !important;
             width: 100% !important;
-            margin: 0 !important;
-            padding: 0 !important;
         }
         
-        /* Make each column equal width and prevent stacking */
-        section[data-testid="stVerticalBlock"] > div:has(div.sticky-nav) [data-testid="stHorizontalBlock"] > [data-testid="column"] {
-            flex: 1 !important;
+        /* Force columns to stay horizontal on ALL screen sizes */
+        div[data-testid="stVerticalBlock"]:has(div.sticky-nav) > div[data-testid="stHorizontalBlock"] > div {
+            flex: 1 1 33.333% !important;
             min-width: 0 !important;
+            max-width: 33.333% !important;
             width: 33.333% !important;
             padding: 0 !important;
             margin: 0 !important;
         }
         
-        /* Ensure this works on mobile - override Streamlit's responsive behavior */
-        @media only screen and (max-width: 768px) {
-            section[data-testid="stVerticalBlock"] > div:has(div.sticky-nav) [data-testid="stHorizontalBlock"] {
-                flex-direction: row !important;
-                flex-wrap: nowrap !important;
-            }
-            
-            section[data-testid="stVerticalBlock"] > div:has(div.sticky-nav) [data-testid="stHorizontalBlock"] > [data-testid="column"] {
-                flex: 1 !important;
-                width: 33.333% !important;
+        /* Override Streamlit's responsive column behavior */
+        @media (max-width: 640px) {
+            div[data-testid="stVerticalBlock"]:has(div.sticky-nav) > div[data-testid="stHorizontalBlock"] > div {
+                flex: 1 1 33.333% !important;
+                min-width: 0 !important;
                 max-width: 33.333% !important;
+                width: 33.333% !important;
             }
         }
         
-        /* Style the buttons */
-        section[data-testid="stVerticalBlock"] > div:has(div.sticky-nav) button {
+        /* Style all buttons in the navigation */
+        div[data-testid="stVerticalBlock"]:has(div.sticky-nav) button {
             width: 100% !important;
-            height: 56px !important;
-            border-radius: 10px !important;
+            min-height: 55px !important;
+            height: auto !important;
+            padding: 10px 2px !important;
+            border-radius: 8px !important;
             border: none !important;
-            background-color: #f5f5f5 !important;
-            color: #555 !important;
+            background-color: #f0f0f0 !important;
+            color: #333 !important;
             font-size: 13px !important;
             font-weight: 500 !important;
-            padding: 8px 4px !important;
             display: flex !important;
+            flex-direction: column !important;
             align-items: center !important;
             justify-content: center !important;
-            transition: all 0.2s ease !important;
-            box-sizing: border-box !important;
-            cursor: pointer !important;
+            transition: all 0.3s ease !important;
+            white-space: nowrap !important;
+            overflow: hidden !important;
+            text-overflow: ellipsis !important;
         }
         
-        /* Button hover state */
-        section[data-testid="stVerticalBlock"] > div:has(div.sticky-nav) button:hover {
-            background-color: #e8e8e8 !important;
-        }
-        
-        /* Button active/pressed state */
-        section[data-testid="stVerticalBlock"] > div:has(div.sticky-nav) button:active {
-            background-color: #00D9A5 !important;
-            color: white !important;
-        }
-        
-        /* Mobile specific button sizing */
-        @media only screen and (max-width: 480px) {
-            section[data-testid="stVerticalBlock"] > div:has(div.sticky-nav) button {
+        /* Mobile specific button adjustments */
+        @media (max-width: 768px) {
+            div[data-testid="stVerticalBlock"]:has(div.sticky-nav) button {
                 font-size: 11px !important;
-                height: 52px !important;
-                padding: 6px 2px !important;
+                padding: 8px 2px !important;
+                min-height: 50px !important;
+            }
+            
+            div[data-testid="stVerticalBlock"]:has(div.sticky-nav) > div[data-testid="stHorizontalBlock"] {
+                gap: 3px !important;
+                padding: 0 5px !important;
             }
         }
         
-        /* Hide the sticky-nav marker div itself */
-        .sticky-nav {
-            display: none;
+        /* Extra small screens */
+        @media (max-width: 480px) {
+            div[data-testid="stVerticalBlock"]:has(div.sticky-nav) button {
+                font-size: 10px !important;
+                padding: 6px 1px !important;
+            }
+        }
+        
+        /* Hover effect */
+        div[data-testid="stVerticalBlock"]:has(div.sticky-nav) button:hover {
+            background-color: #e0e0e0 !important;
+            transform: translateY(-2px);
+        }
+        
+        /* Active/Selected button style */
+        div[data-testid="stVerticalBlock"]:has(div.sticky-nav) button:active {
+            background-color: #00D9A5 !important;
+            color: white !important;
         }
     </style>
     """,
@@ -278,49 +282,43 @@ st.markdown(
 if 'nav' not in st.session_state:
     st.session_state.nav = 'Convert'
 
-# 3. Page Content (Based on selected navigation)
+# 3. Page Content (Linked to buttons)
 if st.session_state.nav == 'Convert':
     st.header("🔄 Convert Currency")
-    
-    st.markdown("**Market Trend:** DOWN ↘")
-    st.markdown("**Forecast (30 days):** ₹106.43")
-    
-    # Add scrollable content
-    for i in range(30):
-        st.write(f"Content line {i+1}")
+    st.info("Here you can convert your tokens.")
+    # Add long content to test scrolling
+    for i in range(50):
+        st.write(f"Line {i+1}: Scroll down to see the sticky navigation...")
 
 elif st.session_state.nav == 'Leaderboard':
     st.header("🏆 Leaderboard")
     st.write("Current top players:")
-    st.table({
-        "Rank": ["1", "2", "3"],
-        "User": ["Alice", "Bob", "Charlie"], 
-        "Score": [1000, 850, 720]
-    })
+    st.table({"User": ["Alice", "Bob", "Charlie"], "Score": [1000, 850, 720]})
 
 elif st.session_state.nav == 'Savings':
     st.header("👛 My Savings")
     st.metric("Total Balance", "$4,250.00")
-    st.write("Your savings are growing!")
+    st.write("Your savings details...")
 
-# 4. Bottom Navigation Bar (Must be at the end)
+# 4. Sticky Navigation Bar
 with st.container():
     st.markdown('<div class="sticky-nav"></div>', unsafe_allow_html=True)
     
-    col1, col2, col3 = st.columns(3)
+    # Create three equal columns for navigation buttons
+    col_n1, col_n2, col_n3 = st.columns(3)
     
-    with col1:
-        if st.button("🔄 Convert", key="btn_convert", use_container_width=True):
+    with col_n1:
+        if st.button("🔄 Convert", key="nav_convert", use_container_width=True):
             st.session_state.nav = 'Convert'
             st.rerun()
     
-    with col2:
-        if st.button("🏆 Leaderboard", key="btn_leader", use_container_width=True):
+    with col_n2:
+        if st.button("🏆 Leaderboard", key="nav_leader", use_container_width=True):
             st.session_state.nav = 'Leaderboard'
             st.rerun()
     
-    with col3:
-        if st.button("👛 My Savings", key="btn_savings", use_container_width=True):
+    with col_n3:
+        if st.button("👛 My Savings", key="nav_savings", use_container_width=True):
             st.session_state.nav = 'Savings'
             st.rerun()
 # ==========================================
@@ -472,6 +470,7 @@ elif st.session_state.nav == 'Convert':
         
         advice = generate_trading_advice(ols_dir, risk_level, current_rate, final_pred)
         st.warning(f"AI Recommendation: *{advice}*")
+
 
 
 
