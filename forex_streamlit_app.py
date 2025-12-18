@@ -166,74 +166,73 @@ st.markdown("""
 # ==========================================================
 # NAVIGATION BAR
 # ==========================================================
-# 1. Inject Custom CSS to fix the navigation bar to the bottom
+# 1. CSS to pin the container and force buttons to fill width
 st.markdown(
     """
     <style>
-    /* Create a fixed container at the bottom */
-    .footer-nav {
-        position: fixed;
-        bottom: 0;
-        left: 0;
-        width: 100%;
-        background-color: white; /* Match your theme */
-        padding: 10px 0;
-        border-top: 1px solid #ddd;
-        z-index: 999;
-        display: flex;
-        justify-content: center;
-    }
-    
-    /* Ensure the main content doesn't get hidden behind the footer */
-    .main .block-container {
-        padding-bottom: 80px;
-    }
+        /* This targets the container we will create below */
+        [data-testid="stVerticalBlock"] > div:has(div.nav-container) {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            background-color: white;
+            z-index: 1000;
+            padding: 10px 20px;
+            border-top: 1px solid #e6e6e6;
+        }
 
-    /* Force buttons to fill the width of their columns */
-    div.stButton > button {
-        width: 100%;
-        border-radius: 5px;
-        height: 3em;
-    }
+        /* Force buttons to be equal size and fill columns */
+        div.stButton > button {
+            width: 100%;
+            border-radius: 10px;
+            height: 3.5em;
+            border: 1px solid #f0f2f6;
+        }
+        
+        /* Add padding to the bottom of the page content so it's not hidden */
+        .main .block-container {
+            padding-bottom: 100px;
+        }
     </style>
     """,
     unsafe_allow_html=True
 )
 
-# 2. The Navigation Logic
-# Use a container to group the buttons
-footer_container = st.container()
-
-with footer_container:
-    # Use the 'gap' parameter to ensure they look uniform
-    col_n1, col_n2, col_n3 = st.columns(3, gap="small")
-    
-    with col_n1:
-        if st.button("🔄 Convert", key="nav_convert"): 
-            st.session_state.nav = 'Convert'
-            st.rerun()
-    with col_n2:
-        if st.button("🏆 Leaderboard", key="nav_leader"): 
-            st.session_state.nav = 'Leaderboard'
-            st.rerun()
-    with col_n3:
-        if st.button("👛 My Savings", key="nav_savings"): 
-            st.session_state.nav = 'Savings'
-            st.rerun()
-
-# 3. Page Routing Logic (Link the buttons to content)
+# 2. Page Routing Logic (Linking the buttons to content)
 if 'nav' not in st.session_state:
-    st.session_state.nav = 'Convert' # Default page
+    st.session_state.nav = 'Convert'
 
+# Display content based on selection
 if st.session_state.nav == 'Convert':
-    st.title("Convert Page")
-    st.write("Content for conversion goes here..." * 50) # Long text to test scrolling
+    st.title("🔄 Currency Converter")
+    st.write("Scroll down to see the persistent footer..." + ("\n\nContent " * 100))
 elif st.session_state.nav == 'Leaderboard':
-    st.title("Leaderboard")
-    st.write("Top users list...")
+    st.title("🏆 Leaderboard")
+    st.write("Top Performers")
 elif st.session_state.nav == 'Savings':
-    st.title("My Savings")
-    st.write("Your balance details...")
+    st.title("👛 My Savings")
+    st.write("Your total balance: $1,200")
+
+# 3. The Footer Navigation (Placed at the bottom of the script)
+# We wrap this in a div with a class we can target
+st.markdown('<div class="nav-container"></div>', unsafe_allow_html=True)
+col_n1, col_n2, col_n3 = st.columns(3)
+
+with col_n1:
+    if st.button("🔄 Convert", key="nav_convert"):
+        st.session_state.nav = 'Convert'
+        st.rerun()
+
+with col_n2:
+    if st.button("🏆 Leaderboard", key="nav_leader"):
+        st.session_state.nav = 'Leaderboard'
+        st.rerun()
+
+with col_n3:
+    if st.button("👛 My Savings", key="nav_savings"):
+        st.session_state.nav = 'Savings'
+        st.rerun()
 
 # ==========================================
 # VIEW: LEADERBOARD
@@ -384,6 +383,7 @@ elif st.session_state.nav == 'Convert':
         
         advice = generate_trading_advice(ols_dir, risk_level, current_rate, final_pred)
         st.warning(f"AI Recommendation: *{advice}*")
+
 
 
 
