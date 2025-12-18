@@ -4,7 +4,12 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import streamlit as st
+import statsmodels.api as sm
+from statsmodels.tsa.arima.model import ARIMA
+from arch import arch_model
+import yfinance as yf # Ensure yfinance is imported if using the local fetch_data
 
+# Assuming these exist in your local models.py
 from models import (
     build_forecast_dates,
     classify_risk_from_variance,
@@ -32,68 +37,8 @@ st.title("💱 EUR/INR Exchange Rate Prediction")
 st.caption("Real-time forex analysis with econometric models – tuned for mobile screens.")
 
 # ==========================================
-# HELPER FUNCTIONS (from Notebook)
+# HELPER FUNCTIONS (Visualization)
 # ==========================================
-
-@st.cache_data(ttl=3600)
-def fetch_data(period="1y"):
-    """Fetch live EUR/INR data"""
-    with st.spinner("📥 Loading EUR/INR data..."):
-        ticker = "EURINR=X"
-        data = yf.download(ticker, period=period, progress=False)
-        
-        if isinstance(data.columns, pd.MultiIndex):
-            data.columns = data.columns.get_level_values(0)
-        
-        df = data[['Close']].copy()
-        df = df.ffill()
-        df['Rate'] = df['Close']
-        df = df.resample('B').last().ffill()
-        
-        return df
-
-def run_ols_model(series, forecast_steps):
-    """Auto-Regressive OLS model"""
-    df_ols = pd.DataFrame(series)
-    df_ols['Lag_1'] = df_ols['Rate'].shift(1)
-    df_ols.dropna(inplace=True)
-    
-    X = sm.add_constant(df_ols['Lag_1'])
-    y = df_ols['Rate']
-    
-    model = sm.OLS(y, X).fit()
-    
-    last_val = series.iloc[-1]
-    forecast = []
-    
-    for _ in range(forecast_steps):
-        pred = model.params['const'] + model.params['Lag_1'] * last_val
-        forecast.append(pred)
-        last_val = pred
-        
-    return model, forecast
-
-def run_arima_model(series, forecast_steps):
-    """ARIMA model for forecasting"""
-    model = ARIMA(series, order=(5, 1, 0))
-    model_fit = model.fit()
-    
-    forecast_res = model_fit.get_forecast(steps=forecast_steps)
-    forecast_mean = forecast_res.predicted_mean
-    
-    return model_fit, forecast_mean
-
-def run_garch_model(series, forecast_steps):
-    """GARCH model for volatility"""
-    returns = 100 * series.pct_change().dropna()
-    
-    model = arch_model(returns, vol='Garch', p=1, q=1)
-    model_fit = model.fit(disp='off')
-    
-    forecast_res = model_fit.forecast(horizon=forecast_steps)
-    variance_forecast = forecast_res.variance.iloc[-1].values
-    
-    return model_fit, variance_forecast
 
 def create_visualization(df, forecast_days, ols_forecast, arima_forecast, current_rate):
     """Create professional visualization"""
@@ -155,7 +100,7 @@ forecast_days = st.sidebar.slider("Forecast Period (Days)", 7, 90, 30)
 data_period = st.sidebar.selectbox("Historical Data Period", ["1y", "2y", "5y", "max"])
 
 # ==========================================
-# MAIN APP
+# MAIN APP: LOAD DATA
 # ==========================================
 
 with st.spinner("📥 Loading EUR/INR data..."):
@@ -167,6 +112,23 @@ if df.empty:
 
 current_rate = df["Rate"].iloc[-1]
 
+# ==========================================
+# RUN MODELS EARLY 
+# (Moved up so we can use predictions in the converter)
+# ==========================================
+with st.spinner("🔄 Running econometric models for prediction..."):
+    ols_model, ols_forecast = run_ols_model(df["Rate"], forecast_days)
+    arima_model, arima_forecast = run_arima_model(df["Rate"], forecast_days)
+    garch_model, garch_variance = run_garch_model(df["Rate"], forecast_days)
+
+# Get the final predicted value for display
+predicted_rate = 0.0
+if arima_forecast is not None and len(arima_forecast) > 0:
+    predicted_rate = arima_forecast.iloc[-1]
+
+# ==========================================
+# MARKET SNAPSHOT
+# ==========================================
 st.subheader("Market Snapshot")
 
 metric_col1, metric_col2 = st.columns(2)
@@ -181,39 +143,65 @@ with metric_col2:
 st.caption(f"Data points: **{len(df)}** (from {df.index[0].date()})")
 
 # ==========================================
-# QUICK CURRENCY CONVERTER (BIDIRECTIONAL)
+# 🆕 IMPROVED CURRENCY CONVERTER
 # ==========================================
 st.divider()
-st.subheader("🔄 Quick Currency Converter")
+st.subheader("🔄 Smart Currency Converter")
 
-conv_col1, conv_col2 = st.columns(2)
+# 1. Rate Dashboard (Current vs Predicted)
+rate_col1, rate_col2 = st.columns(2)
 
-with conv_col1:
-    base_currency = st.radio("I have", ["INR", "EUR"], horizontal=True)
-with conv_col2:
+with rate_col1:
+    st.container(border=True).markdown(
+        f"**Current Rate**\n### ₹{current_rate:.4f}"
+    )
+
+with rate_col2:
+    diff_val = predicted_rate - current_rate
+    diff_color = "green" if diff_val > 0 else "red"
+    direction_arrow = "↗" if diff_val > 0 else "↘"
+    
+    st.container(border=True).markdown(
+        f"**Predicted Rate (+{forecast_days}d)**\n"
+        f"### ₹{predicted_rate:.4f} :{diff_color}[{direction_arrow}]"
+    )
+
+# 2. Conversion Inputs
+st.markdown("##### Convert Amount")
+c_col1, c_col2 = st.columns([1, 2])
+
+with c_col1:
+    # Bi-directional selection
+    convert_direction = st.radio(
+        "Direction", 
+        ["EUR ➡ INR", "INR ➡ EUR"],
+        label_visibility="collapsed"
+    )
+
+with c_col2:
     amount_input = st.number_input(
         "Amount",
         min_value=0.0,
         step=100.0,
+        value=1000.0,
         format="%.2f",
-        key="conv_amount",
+        label_visibility="collapsed"
     )
 
-if base_currency == "INR":
-    converted = amount_input / current_rate if current_rate > 0 else 0.0
-    from_label, to_label = "INR", "EUR"
-else:
-    converted = amount_input * current_rate
-    from_label, to_label = "EUR", "INR"
-
+# 3. Calculation & Display
 if amount_input > 0:
-    st.caption(
-        f"**{amount_input:,.2f} {from_label} ≈ {converted:,.4f} {to_label}** "
-        f"at current rate **{current_rate:.4f} ₹/EUR**."
-    )
+    if convert_direction == "EUR ➡ INR":
+        # EUR to INR: Multiply
+        converted_val = amount_input * current_rate
+        st.success(f"💶 **{amount_input:,.2f} EUR** is approximately **₹ {converted_val:,.2f} INR**")
+    else:
+        # INR to EUR: Divide
+        converted_val = amount_input / current_rate
+        st.success(f"🇮🇳 **₹ {amount_input:,.2f} INR** is approximately **€ {converted_val:,.2f} EUR**")
+
 
 # ==========================================
-# TRANSACTION LOGGING (MOBILE-FRIENDLY)
+# TRANSACTION LOGGING
 # ==========================================
 st.divider()
 st.subheader("💾 Log Transaction")
@@ -255,12 +243,10 @@ if log_button and amount_inr > 0:
 
 st.divider()
 
+# ==========================================
+# ANALYSIS RESULTS (Models already ran above)
+# ==========================================
 st.header("📊 Analysis Results")
-
-with st.spinner("🔄 Running econometric models..."):
-    ols_model, ols_forecast = run_ols_model(df["Rate"], forecast_days)
-    arima_model, arima_forecast = run_arima_model(df["Rate"], forecast_days)
-    garch_model, garch_variance = run_garch_model(df["Rate"], forecast_days)
 
 ols_direction = "UP ↗" if ols_model.params["Lag_1"] > 1 else "DOWN ↘"
 ols_strength = round(ols_model.rsquared * 100, 1)
@@ -277,9 +263,8 @@ with ols_col:
 
 with arima_col:
     if arima_forecast is not None and len(arima_forecast) > 0:
-        final_pred = arima_forecast.iloc[-1]
-        change_pct = ((final_pred - current_rate) / current_rate) * 100
-        st.metric(f"Predicted Rate ({forecast_days}D)", f"₹{final_pred:.4f}", delta=f"{change_pct:.3f}%")
+        change_pct = ((predicted_rate - current_rate) / current_rate) * 100
+        st.metric(f"Predicted Rate ({forecast_days}D)", f"₹{predicted_rate:.4f}", delta=f"{change_pct:.3f}%")
         with st.expander("View ARIMA Model Summary"):
             st.write(arima_model.summary())
 
@@ -299,7 +284,7 @@ advice = generate_trading_advice(
     ols_direction,
     risk_label,
     current_rate,
-    final_pred if ("final_pred" in locals() and arima_forecast is not None) else None,
+    predicted_rate,
 )
 st.warning(advice)
 
