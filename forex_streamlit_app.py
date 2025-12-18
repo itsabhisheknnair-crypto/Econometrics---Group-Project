@@ -166,24 +166,48 @@ st.markdown("""
 # ==========================================
 # NAVIGATION BAR
 # ==========================================
-# Define your functions/pages
-def convert_page():
-    st.title("🔄 Convert")
+# 1. Initialize the session state so the app knows which page to show first
+if 'nav' not in st.session_state:
+    st.session_state.nav = 'Convert'
 
-def leaderboard_page():
-    st.title("🏆 Leaderboard")
+# 2. Create a container for your main content 
+# (This ensures content stays above the nav bar)
+main_content = st.container()
 
-def savings_page():
-    st.title("👛 My Savings")
+# 3. Logic: What to show on each "page"
+with main_content:
+    if st.session_state.nav == 'Convert':
+        st.title("🔄 Convert")
+        st.write("Your conversion tools go here.")
+        # Add your conversion logic...
 
-# Create the navigation structure
-pg = st.navigation([
-    st.Page(convert_page, title="Convert", icon="🔄"),
-    st.Page(leaderboard_page, title="Leaderboard", icon="🏆"),
-    st.Page(savings_page, title="My Savings", icon="👛"),
-])
+    elif st.session_state.nav == 'Leaderboard':
+        st.title("🏆 Leaderboard")
+        st.write("Top users are listed here.")
+        # Add your leaderboard logic...
 
-pg.run()
+    elif st.session_state.nav == 'Savings':
+        st.title("👛 My Savings")
+        st.write("View your savings progress.")
+        # Add your savings logic...
+
+# 4. MOBILE NAVIGATION BAR (Placed at the bottom)
+st.divider()
+
+# Using segmented_control for a modern mobile feel
+# This automatically updates st.session_state.nav when clicked
+selection = st.segmented_control(
+    label="Navigation",
+    options=["Convert", "Leaderboard", "Savings"],
+    icons=["🔄", "🏆", "👛"],
+    default=st.session_state.nav,
+    label_visibility="collapsed"
+)
+
+# Update state and rerun if the user selects a new tab
+if selection and selection != st.session_state.nav:
+    st.session_state.nav = selection
+    st.rerun()
 
 # ==========================================
 # VIEW: LEADERBOARD
@@ -334,4 +358,5 @@ elif st.session_state.nav == 'Convert':
         
         advice = generate_trading_advice(ols_dir, risk_level, current_rate, final_pred)
         st.warning(f"AI Recommendation: *{advice}*")
+
 
