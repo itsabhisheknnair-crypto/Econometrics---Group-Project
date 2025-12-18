@@ -69,7 +69,6 @@ def run_arima_model(series, forecast_steps):
     forecast_res = model_fit.get_forecast(steps=forecast_steps)
     forecast_mean = forecast_res.predicted_mean
     
-    # Ensure index is datetime for plotting if it isn't already
     if not isinstance(forecast_mean.index, pd.DatetimeIndex):
         last_date = series.index[-1]
         forecast_dates = pd.date_range(start=last_date, periods=forecast_steps+1, freq='B')[1:]
@@ -86,29 +85,25 @@ def run_garch_model(series, forecast_steps):
     return model_fit, variance_forecast
 
 def create_interactive_plot(df, forecast_series=None):
-    """
-    Creates an interactive plot with historical data and optionally the ARIMA forecast.
-    """
+    """Creates an interactive plot with historical data and ARIMA forecast"""
     fig = go.Figure()
 
-    # 1. Historical Data Trace
+    # Historical Data
     fig.add_trace(go.Scatter(
         x=df.index, 
         y=df['Rate'], 
         mode='lines', 
         name='Historical Rate',
-        line=dict(color='#0066cc', width=2), 
+        line=dict(color='#00D9FF', width=3), 
         fill='tozeroy', 
-        fillcolor='rgba(0, 102, 204, 0.1)'
+        fillcolor='rgba(0, 217, 255, 0.1)'
     ))
 
-    # 2. ARIMA Forecast Trace (if provided)
+    # ARIMA Forecast
     if forecast_series is not None:
-        # We add the last historical point to the forecast series to make the lines connect visually
         last_hist_date = df.index[-1]
         last_hist_val = df['Rate'].iloc[-1]
         
-        # Create a connecting series
         conn_x = [last_hist_date] + list(forecast_series.index)
         conn_y = [last_hist_val] + list(forecast_series.values)
 
@@ -116,20 +111,31 @@ def create_interactive_plot(df, forecast_series=None):
             x=conn_x,
             y=conn_y,
             mode='lines',
-            name='ARIMA Prediction',
-            line=dict(color='#ff4b4b', width=2, dash='dash'), # Red dashed line for prediction
+            name='AI Prediction',
+            line=dict(color='#FF6B9D', width=3, dash='dot'),
             hovertemplate='%{y:.2f} (Predicted)<extra></extra>'
         ))
 
     fig.update_layout(
-        title="Interactive Price History & Prediction", 
-        xaxis_title="Time", 
-        yaxis_title="Rate (₹ per EUR)",
-        template="plotly_white", 
+        title=dict(text="Rate History & Prediction", font=dict(size=18, color='#FFFFFF')),
+        xaxis_title="", 
+        yaxis_title="Rate (₹/EUR)",
+        template="plotly_dark",
+        paper_bgcolor='rgba(0,0,0,0)',
+        plot_bgcolor='rgba(30,30,40,0.5)',
         hovermode="x unified", 
-        height=450, 
+        height=400, 
         margin=dict(l=20, r=20, t=50, b=20),
-        legend=dict(yanchor="top", y=0.99, xanchor="left", x=0.01)
+        legend=dict(
+            yanchor="top", 
+            y=0.99, 
+            xanchor="left", 
+            x=0.01,
+            bgcolor='rgba(0,0,0,0.5)',
+            font=dict(color='#FFFFFF')
+        ),
+        xaxis=dict(showgrid=True, gridcolor='rgba(255,255,255,0.1)', color='#FFFFFF'),
+        yaxis=dict(showgrid=True, gridcolor='rgba(255,255,255,0.1)', color='#FFFFFF')
     )
     return fig
 
@@ -143,77 +149,233 @@ def generate_trading_advice(ols_direction, risk, current, predicted):
     else: return "🔄 HOLD/WAIT"
 
 # ==========================================
-# CUSTOM UI STYLING
+# ENHANCED MOBILE-FIRST STYLING
 # ==========================================
 st.markdown("""
 <style>
+    /* Hide default Streamlit elements */
+    #MainMenu {visibility: hidden;}
+    footer {visibility: hidden;}
+    header {visibility: hidden;}
+    
+    /* Dark theme with gradient */
+    .stApp {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    }
+    
+    /* Navigation buttons */
     div.stButton > button {
         width: 100%;
-        border-radius: 12px;
-        height: 50px;
-        font-weight: bold;
+        border-radius: 20px;
+        height: 60px;
+        font-weight: 600;
+        font-size: 16px;
+        border: none;
+        background: rgba(255, 255, 255, 0.15);
+        backdrop-filter: blur(10px);
+        color: white;
+        transition: all 0.3s ease;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
     }
-    .big-font { font-size: 20px !important; font-weight: bold; }
-    .metric-card {
-        background-color: #f0f2f6;
-        padding: 20px;
-        border-radius: 10px;
+    
+    div.stButton > button:hover {
+        background: rgba(255, 255, 255, 0.25);
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+    }
+    
+    div.stButton > button:active {
+        transform: translateY(0px);
+    }
+    
+    /* Card styling */
+    .card {
+        background: rgba(255, 255, 255, 0.1);
+        backdrop-filter: blur(20px);
+        border-radius: 25px;
+        padding: 25px;
+        margin: 15px 0;
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+    }
+    
+    /* Input fields */
+    .stNumberInput > div > div > input,
+    .stTextInput > div > div > input,
+    .stSelectbox > div > div > select {
+        background: rgba(255, 255, 255, 0.15) !important;
+        border: 2px solid rgba(255, 255, 255, 0.3) !important;
+        border-radius: 15px !important;
+        color: white !important;
+        font-size: 24px !important;
+        font-weight: 600 !important;
+        padding: 15px !important;
+        height: 70px !important;
+    }
+    
+    /* Category buttons */
+    .category-btn {
+        background: rgba(255, 255, 255, 0.12);
+        backdrop-filter: blur(10px);
+        border-radius: 20px;
+        padding: 30px 20px;
         text-align: center;
+        border: 2px solid rgba(255, 255, 255, 0.2);
+        transition: all 0.3s ease;
+    }
+    
+    /* Leaderboard styling */
+    .leader-card {
+        background: linear-gradient(135deg, rgba(255, 255, 255, 0.15), rgba(255, 255, 255, 0.05));
+        backdrop-filter: blur(15px);
+        border-radius: 20px;
+        padding: 20px;
+        margin: 10px 0;
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+    }
+    
+    /* Savings display */
+    .savings-display {
+        background: linear-gradient(135deg, #FF6B9D, #C471ED);
+        border-radius: 30px;
+        padding: 50px 30px;
+        text-align: center;
+        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+        margin: 20px 0;
+    }
+    
+    /* Text styling */
+    h1, h2, h3, p, div, span, label {
+        color: white !important;
+    }
+    
+    .big-number {
+        font-size: 120px;
+        font-weight: 800;
+        line-height: 1;
+        text-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+    }
+    
+    /* Metrics */
+    .metric-box {
+        background: rgba(255, 255, 255, 0.12);
+        backdrop-filter: blur(10px);
+        border-radius: 20px;
+        padding: 20px;
+        text-align: center;
+        border: 1px solid rgba(255, 255, 255, 0.2);
+    }
+    
+    /* Quick picks */
+    .quick-pick {
+        background: rgba(255, 255, 255, 0.1);
+        border-radius: 15px;
+        padding: 12px;
+        text-align: center;
+        border: 1px solid rgba(255, 255, 255, 0.2);
+    }
+    
+    /* Divider */
+    hr {
+        border-color: rgba(255, 255, 255, 0.2) !important;
+        margin: 20px 0 !important;
+    }
+    
+    /* Expander */
+    .streamlit-expanderHeader {
+        background: rgba(255, 255, 255, 0.1) !important;
+        border-radius: 15px !important;
+        color: white !important;
+        font-weight: 600 !important;
+    }
+    
+    /* Info/Success/Warning boxes */
+    .stAlert {
+        background: rgba(255, 255, 255, 0.1) !important;
+        backdrop-filter: blur(10px) !important;
+        border-radius: 15px !important;
+        border: 1px solid rgba(255, 255, 255, 0.2) !important;
     }
 </style>
 """, unsafe_allow_html=True)
 
 # ==========================================
-# NAVIGATION BAR
+# NAVIGATION BAR WITH ICONS
 # ==========================================
+st.markdown("<div style='height: 20px'></div>", unsafe_allow_html=True)
 col_n1, col_n2, col_n3 = st.columns(3)
 with col_n1:
-    if st.button("🔄 Convert", key="nav_convert"): st.session_state.nav = 'Convert'
+    if st.button("🔄\nConvert", key="nav_convert"): 
+        st.session_state.nav = 'Convert'
+        st.rerun()
 with col_n2:
-    if st.button("🏆 Leaderboard", key="nav_leader"): st.session_state.nav = 'Leaderboard'
+    if st.button("🏆\nLeaderboard", key="nav_leader"): 
+        st.session_state.nav = 'Leaderboard'
+        st.rerun()
 with col_n3:
-    if st.button("👛 My Savings", key="nav_savings"): st.session_state.nav = 'Savings'
+    if st.button("💰\nSavings", key="nav_savings"): 
+        st.session_state.nav = 'Savings'
+        st.rerun()
 
-st.divider()
+st.markdown("<div style='height: 10px'></div>", unsafe_allow_html=True)
 
 # ==========================================
 # VIEW: LEADERBOARD
 # ==========================================
 if st.session_state.nav == 'Leaderboard':
-    st.subheader("WEEKLY SAVINGS LEADERBOARD")
-    t1, t2, t3 = st.columns([1,2,1])
-    with t2:
-        st.caption("Friends 🔘 Global")
+    st.markdown("<h2 style='text-align: center; margin-bottom: 30px;'>🏆 Weekly Champions</h2>", unsafe_allow_html=True)
     
     leaders = [
-        {"rank": "🥇", "name": "Priya S.", "eff": "+2.4%", "img": "👩🏽"},
-        {"rank": "🥈", "name": "Rahul K.", "eff": "+1.8%", "img": "👨🏽"},
-        {"rank": "🥉", "name": "Amit B.", "eff": "+1.1%", "img": "👨🏻"},
-        {"rank": "2", "name": "Rant K.", "eff": "+0.8%", "img": "👩🏻"},
-        {"rank": "4", "name": "Antre G.", "eff": "+0.7%", "img": "👨🏾"},
-        {"rank": "5", "name": "Divya K.", "eff": "+0.5%", "img": "👩🏼"},
+        {"rank": "🥇", "name": "Priya S.", "eff": "+2.4%", "img": "👩🏽", "color": "linear-gradient(135deg, #FFD700, #FFA500)"},
+        {"rank": "🥈", "name": "Rahul K.", "eff": "+1.8%", "img": "👨🏽", "color": "linear-gradient(135deg, #C0C0C0, #A8A8A8)"},
+        {"rank": "🥉", "name": "Amit B.", "eff": "+1.1%", "img": "👨🏻", "color": "linear-gradient(135deg, #CD7F32, #B8860B)"},
+        {"rank": "4", "name": "Rant K.", "eff": "+0.8%", "img": "👩🏻", "color": "rgba(255, 255, 255, 0.15)"},
+        {"rank": "5", "name": "Antre G.", "eff": "+0.7%", "img": "👨🏾", "color": "rgba(255, 255, 255, 0.12)"},
+        {"rank": "6", "name": "Divya K.", "eff": "+0.5%", "img": "👩🏼", "color": "rgba(255, 255, 255, 0.1)"},
     ]
     
     for leader in leaders:
-        with st.container():
-            c1, c2, c3 = st.columns([1, 4, 2])
-            with c1: st.write(f"### {leader['rank']}")
-            with c2: st.write(f"**{leader['img']} {leader['name']}**")
-            with c3: st.success(f"{leader['eff']}\nEfficiency")
-            st.markdown("---")
+        st.markdown(f"""
+        <div class='leader-card' style='background: {leader["color"]};'>
+            <div style='display: flex; align-items: center; justify-content: space-between;'>
+                <div style='display: flex; align-items: center; gap: 15px;'>
+                    <span style='font-size: 32px;'>{leader['rank']}</span>
+                    <span style='font-size: 36px;'>{leader['img']}</span>
+                    <span style='font-size: 20px; font-weight: 600;'>{leader['name']}</span>
+                </div>
+                <div style='text-align: right;'>
+                    <div style='font-size: 28px; font-weight: 700; color: #00FF88;'>{leader['eff']}</div>
+                    <div style='font-size: 14px; opacity: 0.8;'>Efficiency</div>
+                </div>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
 
 # ==========================================
 # VIEW: MY SAVINGS
 # ==========================================
 elif st.session_state.nav == 'Savings':
-    st.subheader("MY SAVINGS WALLET")
-    col_center = st.columns([1, 2, 1])[1]
+    st.markdown("<div style='height: 40px'></div>", unsafe_allow_html=True)
+    
+    col_center = st.columns([1, 6, 1])[1]
     with col_center:
-        st.markdown("<h1 style='text-align: center; font-size: 80px;'>☕</h1>", unsafe_allow_html=True)
-        st.markdown(f"<h1 style='text-align: center; font-size: 100px; line-height: 0.5;'>{st.session_state.coffee_count}</h1>", unsafe_allow_html=True)
-        st.markdown("<h3 style='text-align: center;'>COFFEES</h3>", unsafe_allow_html=True)
-        st.info(f"You saved **{st.session_state.coffee_count} COFFEES** from your last transaction!\n\nCompared to yesterday's rate.")
-        st.button("Share my Savings", type="primary")
+        st.markdown(f"""
+        <div class='savings-display'>
+            <div style='font-size: 100px; margin-bottom: 20px;'>☕</div>
+            <div class='big-number'>{st.session_state.coffee_count}</div>
+            <div style='font-size: 32px; font-weight: 600; margin-top: 20px; letter-spacing: 3px;'>COFFEES SAVED</div>
+            <div style='margin-top: 30px; font-size: 16px; opacity: 0.9;'>
+                🎉 You're beating yesterday's rate!<br/>
+                Keep up the smart trading!
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        st.markdown("<div style='height: 20px'></div>", unsafe_allow_html=True)
+        if st.button("📤 Share Achievement", type="primary"):
+            st.balloons()
+            st.success("Shared to your network! 🎊")
 
 # ==========================================
 # VIEW: CONVERT (Main Logic)
@@ -226,103 +388,121 @@ elif st.session_state.nav == 'Convert':
     
     # --- UI Step 1: Input ---
     if st.session_state.trans_step == 'input':
-        st.subheader("Log Transaction")
-        c1, c2 = st.columns([3, 1])
+        st.markdown("<h2 style='text-align: center; margin-bottom: 30px;'>💱 Currency Converter</h2>", unsafe_allow_html=True)
+        
+        st.markdown("<div class='card'>", unsafe_allow_html=True)
+        c1, c2 = st.columns([4, 1])
         with c1:
-            amt = st.number_input("Amount", value=1000, key="input_amt", label_visibility="collapsed")
+            amt = st.number_input("", value=1000, key="input_amt", label_visibility="collapsed")
         with c2:
-            st.selectbox("Cur", ["INR"], label_visibility="collapsed", key="curr_from")
+            st.selectbox("", ["INR"], label_visibility="collapsed", key="curr_from")
             
-        st.markdown("<div style='text-align: center; color: #0066cc; font-size: 24px;'>⬇️</div>", unsafe_allow_html=True)
+        st.markdown("<div style='text-align: center; font-size: 36px; margin: 10px 0;'>⬇️</div>", unsafe_allow_html=True)
         
-        c3, c4 = st.columns([3, 1])
+        c3, c4 = st.columns([4, 1])
         with c3:
-            st.text_input("Converted", value=f"{amt/current_rate:.2f}", disabled=True, label_visibility="collapsed")
+            st.text_input("", value=f"{amt/current_rate:.2f}", disabled=True, label_visibility="collapsed")
         with c4:
-            st.selectbox("Cur", ["EUR"], label_visibility="collapsed", key="curr_to")
-            
-        st.caption("Quick picks")
-        qp1, qp2, qp3, qp4 = st.columns(4)
-        qp1.button("💲 USD")
-        qp2.button("🇦🇺 AUD")
-        qp3.button("🇨🇦 CAD")
-        qp4.button("🇬🇧 GBP")
+            st.selectbox("", ["EUR"], label_visibility="collapsed", key="curr_to")
+        st.markdown("</div>", unsafe_allow_html=True)
         
-        if st.button("LOG TRANSACTION", type="primary"):
+        st.markdown("<div style='height: 20px'></div>", unsafe_allow_html=True)
+        st.markdown("<p style='text-align: center; font-size: 14px; opacity: 0.7;'>Quick picks</p>", unsafe_allow_html=True)
+        qp1, qp2, qp3, qp4 = st.columns(4)
+        qp1.button("💲\nUSD")
+        qp2.button("🇦🇺\nAUD")
+        qp3.button("🇨🇦\nCAD")
+        qp4.button("🇬🇧\nGBP")
+        
+        st.markdown("<div style='height: 20px'></div>", unsafe_allow_html=True)
+        if st.button("✨ LOG TRANSACTION", type="primary"):
             st.session_state.transaction_amt = amt
             st.session_state.trans_step = 'category'
             st.rerun()
 
     # --- UI Step 2: Categorize ---
     elif st.session_state.trans_step == 'category':
-        st.subheader("CATEGORIZE YOUR TRANSACTION")
+        st.markdown("<h2 style='text-align: center; margin-bottom: 30px;'>📊 Categorize Transaction</h2>", unsafe_allow_html=True)
+        
+        categories = [
+            ("🏠", "Rent"),
+            ("🎓", "Tuition"),
+            ("✈️", "Travel"),
+            ("🛒", "Shopping"),
+            ("👪", "Family"),
+            ("🔄", "Other")
+        ]
+        
         cat_cols = st.columns(3)
-        if cat_cols[0].button("🏠\nRent"): 
-            st.session_state.trans_step = 'input'
-            st.session_state.nav = 'Savings'
-            st.rerun()
-        if cat_cols[1].button("🎓\nTuition"): 
-            st.session_state.trans_step = 'input'
-            st.session_state.nav = 'Savings'
-            st.rerun()
-        if cat_cols[2].button("✈️\nTravel"): 
-            st.session_state.trans_step = 'input'
-            st.session_state.nav = 'Savings'
-            st.rerun()
-            
-        cat_cols2 = st.columns(3)
-        if cat_cols2[0].button("🛒\nShopping"): 
-            st.session_state.trans_step = 'input'
-            st.session_state.nav = 'Savings'
-            st.rerun()
-        if cat_cols2[1].button("👪\nRemittance"): 
-            st.session_state.trans_step = 'input'
-            st.session_state.nav = 'Savings'
-            st.rerun()
-        if cat_cols2[2].button("🔄\nOther"): 
-            st.session_state.trans_step = 'input'
-            st.session_state.nav = 'Savings'
-            st.rerun()
-            
-        st.button("CONFIRM & SEE SAVINGS", type="primary")
+        for idx, (icon, label) in enumerate(categories):
+            with cat_cols[idx % 3]:
+                if st.button(f"{icon}\n{label}", key=f"cat_{idx}"): 
+                    st.session_state.trans_step = 'input'
+                    st.session_state.nav = 'Savings'
+                    st.rerun()
 
-    # --- BELOW: Analytics with UPDATED Graph ---
-    st.divider()
-    with st.expander("📊 Advanced Market Analysis & Prediction", expanded=True):
+    # --- Analytics Section ---
+    st.markdown("<div style='height: 30px'></div>", unsafe_allow_html=True)
+    with st.expander("📊 AI Market Intelligence", expanded=True):
         
-        # 1. Controls
-        forecast_days = st.slider("Forecast Days", 7, 90, 30)
+        forecast_days = st.slider("📅 Prediction Range (days)", 7, 90, 30)
         
-        # 2. Run Models FIRST (so we have data for the plot)
-        with st.spinner("Running AI Prediction Models..."):
+        with st.spinner("🤖 Running AI models..."):
             ols_model, ols_forecast = run_ols_model(df['Rate'], forecast_days)
             arima_model, arima_forecast = run_arima_model(df['Rate'], forecast_days)
             garch_model, garch_volatility = run_garch_model(df['Rate'], forecast_days)
 
-        # 3. Interactive Plot (Now includes arima_forecast)
-        st.subheader("Market Graph")
-        # Pass the ARIMA forecast to the plotting function here
+        # Interactive Chart
         fig = create_interactive_plot(df, forecast_series=arima_forecast) 
         st.plotly_chart(fig, use_container_width=True)
         
-        # 4. Text Analysis
-        col_res1, col_res2 = st.columns(2)
-        with col_res1:
-            st.subheader("Trend Analysis")
-            ols_dir = "UP ↗" if ols_model.params['Lag_1'] > 1 else "DOWN ↘"
-            st.info(f"Market Trend: **{ols_dir}**")
+        # Metrics Row
+        col_m1, col_m2, col_m3 = st.columns(3)
+        
+        ols_dir = "UP ↗️" if ols_model.params['Lag_1'] > 1 else "DOWN ↘️"
+        final_pred = arima_forecast.iloc[-1]
+        change_pct = ((final_pred - current_rate) / current_rate) * 100
+        
+        with col_m1:
+            st.markdown(f"""
+            <div class='metric-box'>
+                <div style='font-size: 36px;'>📈</div>
+                <div style='font-size: 24px; font-weight: 700; margin-top: 10px;'>{ols_dir}</div>
+                <div style='font-size: 12px; opacity: 0.8;'>Trend</div>
+            </div>
+            """, unsafe_allow_html=True)
             
-        with col_res2:
-            st.subheader("Price Prediction")
-            final_pred = arima_forecast.iloc[-1]
-            st.success(f"Forecast ({forecast_days} days): **₹{final_pred:.2f}**")
+        with col_m2:
+            st.markdown(f"""
+            <div class='metric-box'>
+                <div style='font-size: 36px;'>🎯</div>
+                <div style='font-size: 24px; font-weight: 700; margin-top: 10px;'>₹{final_pred:.2f}</div>
+                <div style='font-size: 12px; opacity: 0.8;'>{forecast_days}d Forecast</div>
+            </div>
+            """, unsafe_allow_html=True)
             
-        # 5. Advice
+        with col_m3:
+            color = "#00FF88" if change_pct > 0 else "#FF6B9D"
+            st.markdown(f"""
+            <div class='metric-box'>
+                <div style='font-size: 36px;'>{'📊' if change_pct > 0 else '📉'}</div>
+                <div style='font-size: 24px; font-weight: 700; margin-top: 10px; color: {color};'>{change_pct:+.2f}%</div>
+                <div style='font-size: 12px; opacity: 0.8;'>Expected Change</div>
+            </div>
+            """, unsafe_allow_html=True)
+        
+        # Trading Advice
         returns = df['Rate'].pct_change().dropna() * 100
         forecast_var = garch_model.fit(disp='off').forecast(horizon=forecast_days)
         risk_val = np.sqrt(forecast_var.variance.iloc[-1].values).mean()
         risk_level = "Low Risk" if risk_val < 0.5 else "High Risk"
         
         advice = generate_trading_advice(ols_dir, risk_level, current_rate, final_pred)
-        st.warning(f"AI Recommendation: **{advice}**")
-
+        
+        st.markdown("<div style='height: 20px'></div>", unsafe_allow_html=True)
+        st.markdown(f"""
+        <div class='card' style='text-align: center; background: linear-gradient(135deg, rgba(255, 107, 157, 0.2), rgba(196, 113, 237, 0.2));'>
+            <div style='font-size: 18px; font-weight: 600; margin-bottom: 10px;'>🤖 AI Recommendation</div>
+            <div style='font-size: 32px; font-weight: 800;'>{advice}</div>
+        </div>
+        """, unsafe_allow_html=True)
