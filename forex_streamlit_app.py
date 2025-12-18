@@ -25,7 +25,7 @@ st.set_page_config(
     page_title="EUR/INR Forex Prediction",
     page_icon="💱",
     layout="centered",  # more comfortable on mobile
-    initial_sidebar_state="collapsed",
+    initial_sidebar_state="expanded",
 )
 
 st.title("💱 EUR/INR Exchange Rate Prediction")
@@ -300,3 +300,4 @@ st.markdown("""
 - Data: EUR/INR exchange rates (₹ per 1 EUR)
 - Developed for financial analysis and educational purposes
 """)
+
