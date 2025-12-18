@@ -166,35 +166,68 @@ st.markdown("""
 # ==========================================================
 # NAVIGATION BAR
 # ==========================================================
-# 1. CSS for Sticky Bottom and Equal-Width Buttons
+# 1. CSS for Sticky Bottom Navigation with Equal-Width Buttons
 st.markdown(
     """
     <style>
-        /* This creates the sticky behavior at the bottom of the viewport */
-        div[data-testid="stVerticalBlock"] > div:has(div.sticky-nav) {
+        /* Hide default Streamlit padding */
+        .main .block-container {
+            padding-bottom: 120px;
+        }
+        
+        /* Target the container holding our navigation buttons */
+        div[data-testid="stVerticalBlock"]:has(div.sticky-nav) {
             position: fixed;
-            bottom: 0px;
+            bottom: 0;
             left: 0;
             width: 100%;
-            background-color: #ffffff; /* Change to match your background */
-            padding: 15px 10%;
-            z-index: 99;
-            border-top: 1px solid #eee;
+            background-color: #ffffff;
+            padding: 10px 0;
+            z-index: 999;
+            border-top: 2px solid #e0e0e0;
+            box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
         }
-
-        /* This forces the buttons to be equal size and fill the width */
-        div.stButton > button {
-            width: 100%;
-            height: 50px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            white-space: nowrap;
+        
+        /* Make columns container use flexbox for equal distribution */
+        div[data-testid="stVerticalBlock"]:has(div.sticky-nav) > div[data-testid="stHorizontalBlock"] {
+            display: flex !important;
+            gap: 0 !important;
+            padding: 0 10px;
         }
-
-        /* Prevent content from being hidden behind the sticky bar */
-        .main .block-container {
-            padding-bottom: 100px;
+        
+        /* Equal width columns */
+        div[data-testid="stVerticalBlock"]:has(div.sticky-nav) > div[data-testid="stHorizontalBlock"] > div {
+            flex: 1 !important;
+            min-width: 0 !important;
+            padding: 0 5px !important;
+        }
+        
+        /* Style all buttons in the navigation */
+        div[data-testid="stVerticalBlock"]:has(div.sticky-nav) button {
+            width: 100% !important;
+            height: 55px !important;
+            border-radius: 8px !important;
+            border: none !important;
+            background-color: #f0f0f0 !important;
+            color: #333 !important;
+            font-size: 14px !important;
+            font-weight: 500 !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            transition: all 0.3s ease !important;
+        }
+        
+        /* Hover effect */
+        div[data-testid="stVerticalBlock"]:has(div.sticky-nav) button:hover {
+            background-color: #e0e0e0 !important;
+            transform: translateY(-2px);
+        }
+        
+        /* Active/Selected button style */
+        div[data-testid="stVerticalBlock"]:has(div.sticky-nav) button:active {
+            background-color: #00D9A5 !important;
+            color: white !important;
         }
     </style>
     """,
@@ -210,36 +243,42 @@ if st.session_state.nav == 'Convert':
     st.header("🔄 Convert Currency")
     st.info("Here you can convert your tokens.")
     # Add long content to test scrolling
-    st.write("Scroll down..." * 100)
+    for i in range(50):
+        st.write(f"Line {i+1}: Scroll down to see the sticky navigation...")
 
 elif st.session_state.nav == 'Leaderboard':
     st.header("🏆 Leaderboard")
     st.write("Current top players:")
-    st.table({"User": ["Alice", "Bob"], "Score": [1000, 850]})
+    st.table({"User": ["Alice", "Bob", "Charlie"], "Score": [1000, 850, 720]})
 
 elif st.session_state.nav == 'Savings':
     st.header("👛 My Savings")
     st.metric("Total Balance", "$4,250.00")
+    st.write("Your savings details...")
 
 # 4. Sticky Navigation Bar
-# The 'sticky-nav' div acts as a hook for our CSS
-st.markdown('<div class="sticky-nav"></div>', unsafe_allow_html=True)
-col_n1, col_n2, col_n3 = st.columns(3)
-
-with col_n1:
-    if st.button("🔄 Convert", key="nav_convert"):
-        st.session_state.nav = 'Convert'
-        st.rerun()
-
-with col_n2:
-    if st.button("🏆 Leaderboard", key="nav_leader"):
-        st.session_state.nav = 'Leaderboard'
-        st.rerun()
-
-with col_n3:
-    if st.button("👛 My Savings", key="nav_savings"):
-        st.session_state.nav = 'Savings'
-        st.rerun()
+# Create a container that will be positioned at the bottom
+with st.container():
+    # This marker helps CSS target this specific container
+    st.markdown('<div class="sticky-nav"></div>', unsafe_allow_html=True)
+    
+    # Create three equal columns for navigation buttons
+    col_n1, col_n2, col_n3 = st.columns(3)
+    
+    with col_n1:
+        if st.button("🔄 Convert", key="nav_convert", use_container_width=True):
+            st.session_state.nav = 'Convert'
+            st.rerun()
+    
+    with col_n2:
+        if st.button("🏆 Leaderboard", key="nav_leader", use_container_width=True):
+            st.session_state.nav = 'Leaderboard'
+            st.rerun()
+    
+    with col_n3:
+        if st.button("👛 My Savings", key="nav_savings", use_container_width=True):
+            st.session_state.nav = 'Savings'
+            st.rerun()
 
 # ==========================================
 # VIEW: LEADERBOARD
@@ -390,6 +429,7 @@ elif st.session_state.nav == 'Convert':
         
         advice = generate_trading_advice(ols_dir, risk_level, current_rate, final_pred)
         st.warning(f"AI Recommendation: *{advice}*")
+
 
 
 
