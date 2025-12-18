@@ -166,15 +166,74 @@ st.markdown("""
 # ==========================================================
 # NAVIGATION BAR
 # ==========================================================
-col_n1, col_n2, col_n3 = st.columns(3)
-with col_n1:
-    if st.button("🔄 Convert", key="nav_convert"): st.session_state.nav = 'Convert'
-with col_n2:
-    if st.button("🏆 Leaderboard", key="nav_leader"): st.session_state.nav = 'Leaderboard'
-with col_n3:
-    if st.button("👛 My Savings", key="nav_savings"): st.session_state.nav = 'Savings'
+# 1. Inject Custom CSS to fix the navigation bar to the bottom
+st.markdown(
+    """
+    <style>
+    /* Create a fixed container at the bottom */
+    .footer-nav {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        width: 100%;
+        background-color: white; /* Match your theme */
+        padding: 10px 0;
+        border-top: 1px solid #ddd;
+        z-index: 999;
+        display: flex;
+        justify-content: center;
+    }
+    
+    /* Ensure the main content doesn't get hidden behind the footer */
+    .main .block-container {
+        padding-bottom: 80px;
+    }
 
-st.divider()
+    /* Force buttons to fill the width of their columns */
+    div.stButton > button {
+        width: 100%;
+        border-radius: 5px;
+        height: 3em;
+    }
+    </style>
+    """,
+    unsafe_allow_html=True
+)
+
+# 2. The Navigation Logic
+# Use a container to group the buttons
+footer_container = st.container()
+
+with footer_container:
+    # Use the 'gap' parameter to ensure they look uniform
+    col_n1, col_n2, col_n3 = st.columns(3, gap="small")
+    
+    with col_n1:
+        if st.button("🔄 Convert", key="nav_convert"): 
+            st.session_state.nav = 'Convert'
+            st.rerun()
+    with col_n2:
+        if st.button("🏆 Leaderboard", key="nav_leader"): 
+            st.session_state.nav = 'Leaderboard'
+            st.rerun()
+    with col_n3:
+        if st.button("👛 My Savings", key="nav_savings"): 
+            st.session_state.nav = 'Savings'
+            st.rerun()
+
+# 3. Page Routing Logic (Link the buttons to content)
+if 'nav' not in st.session_state:
+    st.session_state.nav = 'Convert' # Default page
+
+if st.session_state.nav == 'Convert':
+    st.title("Convert Page")
+    st.write("Content for conversion goes here..." * 50) # Long text to test scrolling
+elif st.session_state.nav == 'Leaderboard':
+    st.title("Leaderboard")
+    st.write("Top users list...")
+elif st.session_state.nav == 'Savings':
+    st.title("My Savings")
+    st.write("Your balance details...")
 
 # ==========================================
 # VIEW: LEADERBOARD
@@ -325,6 +384,7 @@ elif st.session_state.nav == 'Convert':
         
         advice = generate_trading_advice(ols_dir, risk_level, current_rate, final_pred)
         st.warning(f"AI Recommendation: *{advice}*")
+
 
 
 
